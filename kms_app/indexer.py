@@ -14,8 +14,12 @@ from whoosh import index
 from whoosh.fields import ID, NUMERIC, Schema, TEXT
 from whoosh.qparser import MultifieldParser
 
-from .config import AppConfig, ensure_directories
-from .document_loader import DocumentChunk
+try:  # pragma: no cover - import shim for PyInstaller entrypoints
+    from .config import AppConfig, ensure_directories
+    from .document_loader import DocumentChunk
+except ImportError:  # pragma: no cover - fallback when package context is missing
+    from kms_app.config import AppConfig, ensure_directories
+    from kms_app.document_loader import DocumentChunk
 
 LOGGER = logging.getLogger(__name__)
 

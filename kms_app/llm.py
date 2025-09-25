@@ -7,7 +7,10 @@ from typing import Iterable
 
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer, pipeline
 
-from .config import AppConfig
+try:  # pragma: no cover - import shim for PyInstaller entrypoints
+    from .config import AppConfig
+except ImportError:  # pragma: no cover - fallback when package context is missing
+    from kms_app.config import AppConfig
 
 LOGGER = logging.getLogger(__name__)
 

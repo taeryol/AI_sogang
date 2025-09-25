@@ -7,10 +7,19 @@ import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox, scrolledtext
 
-from .config import AppConfig, ensure_directories
-from .document_loader import build_chunks_from_directory
-from .indexer import HybridIndex
-from .llm import LLMClient
+try:  # pragma: no cover - import shim for PyInstaller entrypoints
+    from .config import AppConfig, ensure_directories
+    from .document_loader import build_chunks_from_directory
+    from .indexer import HybridIndex
+    from .llm import LLMClient
+except ImportError:  # pragma: no cover - fallback when package context is missing
+    # When PyInstaller executes the frozen app, __package__ can be empty, which
+    # breaks the relative imports above. Importing through the package name keeps
+    # the module structure intact while still supporting "python -m kms_app.app".
+    from kms_app.config import AppConfig, ensure_directories
+    from kms_app.document_loader import build_chunks_from_directory
+    from kms_app.indexer import HybridIndex
+    from kms_app.llm import LLMClient
 
 LOGGER = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO)
