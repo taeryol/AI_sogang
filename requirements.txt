@@ -1,0 +1,7 @@
+faiss-cpu
+pandas
+PyPDF2
+python-docx
+sentence-transformers
+transformers
+whoosh
