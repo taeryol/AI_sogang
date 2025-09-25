@@ -13,6 +13,7 @@
 
 1. **Python 설치**: Python 3.10 이상을 [공식 웹사이트](https://www.python.org/downloads/windows/)에서 설치합니다. 설치 시 "Add Python to PATH" 옵션을 활성화하세요.
 2. **가상환경 생성(선택)**:
+   > PowerShell이 처음이라면 시작 메뉴에서 **PowerShell**을 실행한 뒤, 프로젝트 폴더로 이동(`cd "C:\경로\AI_sogang"`)해 아래 명령을 한 줄씩 입력하고 Enter 키를 누르세요. `\` 문자는 윈도우 경로 구분자이며 자동으로 채워집니다.
    ```powershell
    python -m venv .venv
    .\.venv\Scripts\activate
