@@ -8,12 +8,16 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
 
-import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from whoosh import index
 from whoosh.fields import ID, NUMERIC, Schema, TEXT
 from whoosh.qparser import MultifieldParser
+
+try:  # Optional dependency that is cumbersome on Apple Silicon
+    import faiss  # type: ignore
+except ImportError:  # pragma: no cover - optional dependency
+    faiss = None
 
 from .config import AppConfig, ensure_directories
 from .document_loader import DocumentChunk
@@ -50,6 +54,8 @@ class HybridIndex:
             self.config.whoosh_index_dir.mkdir(parents=True, exist_ok=True)
         if self.config.faiss_index_path.exists():
             self.config.faiss_index_path.unlink()
+        if self.config.vector_store_path.exists():
+            self.config.vector_store_path.unlink()
         if self.config.metadata_store_path.exists():
             self.config.metadata_store_path.unlink()
 
@@ -110,11 +116,21 @@ class HybridIndex:
         )
 
         embeddings = np.asarray(embeddings, dtype="float32")
-        faiss.normalize_L2(embeddings)
 
-        index_flat = faiss.IndexFlatIP(embeddings.shape[1])
-        index_flat.add(embeddings)
-        faiss.write_index(index_flat, str(self.config.faiss_index_path))
+        if faiss is not None:
+            faiss.normalize_L2(embeddings)
+            index_flat = faiss.IndexFlatIP(embeddings.shape[1])
+            index_flat.add(embeddings)
+            faiss.write_index(index_flat, str(self.config.faiss_index_path))
+            if self.config.vector_store_path.exists():
+                self.config.vector_store_path.unlink()
+        else:
+            norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+            norms[norms == 0] = 1.0
+            embeddings = embeddings / norms
+            np.save(self.config.vector_store_path, embeddings)
+            if self.config.faiss_index_path.exists():
+                self.config.faiss_index_path.unlink()
 
         store = [
             {
@@ -147,19 +163,34 @@ class HybridIndex:
             return [(int(r["doc_id"]), float(r.score)) for r in results]
 
     def _vector_search(self, query: str, limit: int) -> List[Tuple[int, float]]:
-        if not self.config.faiss_index_path.exists():
-            raise FileNotFoundError("Vector index not found. Please ingest documents first.")
-        faiss_index = faiss.read_index(str(self.config.faiss_index_path))
         model = self._load_model()
         query_vec = model.encode([query], convert_to_numpy=True)
         query_vec = np.asarray(query_vec, dtype="float32")
-        faiss.normalize_L2(query_vec)
-        scores, indices = faiss_index.search(query_vec, limit)
-        return [
-            (int(idx), float(score))
-            for idx, score in zip(indices[0], scores[0])
-            if idx != -1
-        ]
+
+        if faiss is not None and self.config.faiss_index_path.exists():
+            faiss.normalize_L2(query_vec)
+            faiss_index = faiss.read_index(str(self.config.faiss_index_path))
+            scores, indices = faiss_index.search(query_vec, limit)
+            return [
+                (int(idx), float(score))
+                for idx, score in zip(indices[0], scores[0])
+                if idx != -1
+            ]
+
+        if not self.config.vector_store_path.exists():
+            raise FileNotFoundError("Vector index not found. Please ingest documents first.")
+
+        stored = np.load(self.config.vector_store_path, allow_pickle=False)
+        if stored.ndim != 2:
+            raise ValueError("Stored embeddings are corrupted; please re-index your documents.")
+
+        norms = np.linalg.norm(query_vec, axis=1, keepdims=True)
+        norms[norms == 0] = 1.0
+        query_vec = query_vec / norms
+
+        scores = stored @ query_vec.T
+        ranked_indices = np.argsort(scores[:, 0])[::-1][:limit]
+        return [(int(idx), float(scores[idx, 0])) for idx in ranked_indices]
 
     def search(self, query: str, top_k: int = 5) -> Sequence[SearchResult]:
         keyword_hits = self._keyword_search(query, limit=top_k * 2)

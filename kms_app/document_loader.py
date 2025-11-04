@@ -63,14 +63,13 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> List[str]:
     chunks: List[str] = []
     start = 0
     length = len(text)
+    step = max(1, chunk_size - overlap)
     while start < length:
         end = min(start + chunk_size, length)
         chunk = text[start:end].strip()
         if chunk:
             chunks.append(chunk)
-        start += chunk_size - overlap
-        if start < 0:
-            break
+        start += step
     return chunks
 
 

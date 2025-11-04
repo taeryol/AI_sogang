@@ -19,6 +19,28 @@ source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
 pip install -r requirements.txt
 ```
 
+### 1-1. macOS 빠른 시작 (Apple Silicon 포함)
+
+macOS에서는 기본 `python` 명령이 2.x일 수 있으므로 **python3**를 명시하세요.
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -r requirements.txt
+```
+
+> 💡  Apple Silicon(M1/M2)에서 `sentence-transformers`가 내부적으로 PyTorch를 설치하며,
+> `pip install torch`가 오래 걸릴 수 있습니다. 설치 중 중단되면 `pip install --upgrade pip setuptools wheel`
+> 후 재시도하세요.
+
+벡터 검색 가속화를 위해 `faiss-cpu`를 추가로 설치할 수 있습니다. 설치가 실패해도 MindBase는
+내장된 NumPy 기반 검색으로 자동 전환되므로 바로 사용 가능합니다.
+
+```bash
+pip install faiss-cpu  # 선택 사항
+```
+
 ### 2. 웹 애플리케이션 실행
 
 ```bash
@@ -26,6 +48,8 @@ flask --app kms_app.webapp run --debug
 ```
 
 브라우저에서 `http://127.0.0.1:5000`으로 접속하면 MindBase UI가 열립니다. 홈 화면에서 문서를 업로드하고 질문을 입력하면 답변을 확인할 수 있습니다.
+
+macOS에서 포트를 변경하고 싶다면 `flask --app kms_app.webapp run --debug --port 8000`처럼 `--port` 옵션을 추가하세요.
 
 ### 3. OpenAI API 연동(선택)
 
