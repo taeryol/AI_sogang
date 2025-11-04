@@ -1,0 +1,25 @@
+body {
+  background-color: #f5f7fb;
+  color: #1f2933;
+}
+
+.card-title {
+  font-weight: 600;
+}
+
+.alert-container {
+  margin-bottom: 1.5rem;
+}
+
+.white-space-pre {
+  white-space: pre-wrap;
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+
+.navbar-brand {
+  letter-spacing: 0.04em;
+}

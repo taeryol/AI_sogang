@@ -24,6 +24,8 @@ class AppConfig:
     whoosh_index_dir: Path = _default_data_dir() / "whoosh_index"
     faiss_index_path: Path = _default_data_dir() / "faiss.index"
     metadata_store_path: Path = _default_data_dir() / "metadata.json"
+    uploads_dir: Path = _default_data_dir() / "uploads"
+    stats_store_path: Path = _default_data_dir() / "stats.json"
     llm_backend: LLMBackend = "huggingface"
     hf_model: str = "google/flan-t5-base"
 
@@ -44,3 +46,4 @@ def ensure_directories(config: AppConfig) -> None:
 
     config.whoosh_index_dir.mkdir(parents=True, exist_ok=True)
     config.metadata_store_path.parent.mkdir(parents=True, exist_ok=True)
+    config.uploads_dir.mkdir(parents=True, exist_ok=True)

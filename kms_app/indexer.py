@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Sequence, Tuple
@@ -45,8 +46,8 @@ class HybridIndex:
         """Delete all stored indices and metadata."""
 
         if self.config.whoosh_index_dir.exists():
-            for child in self.config.whoosh_index_dir.iterdir():
-                child.unlink()
+            shutil.rmtree(self.config.whoosh_index_dir)
+            self.config.whoosh_index_dir.mkdir(parents=True, exist_ok=True)
         if self.config.faiss_index_path.exists():
             self.config.faiss_index_path.unlink()
         if self.config.metadata_store_path.exists():

@@ -1,74 +1,96 @@
-# 차세대 지능형 KMS 데스크톱 앱
+# MindBase – AI 에이전트 기반 지식 관리 시스템
 
-이 저장소는 기획서에 명시된 **검색 증강 생성(RAG)** 기반 지식 관리 시스템을 윈도우 환경에서 바로 실행할 수 있는 데스크톱 애플리케이션(Tkinter)으로 구현합니다. 사용자는 로컬 폴더를 그대로 마운트해 문서들을 인덱싱하고, 자연어 질문에 대해 하이브리드 검색(키워드 + 벡터)과 LLM 답변 생성을 통해 정확한 답변을 받을 수 있습니다.
+MindBase는 기획서의 요구사항을 충실히 반영한 **검색 증강 생성(RAG)** 기반 지식 관리 시스템입니다. Flask로 구현된 웹 애플리케이션과 하이브리드 검색 엔진(Whoosh + FAISS)을 통해 사내 문서를 업로드하고, 자연어 질문으로 즉시 답변을 받을 수 있습니다. 관리자 전용 대시보드를 제공하여 지식베이스 상태와 사용 현황을 모니터링할 수 있습니다.
 
 ## 주요 기능
 
-- **폴더 단위 문서 마운트**: `폴더 선택` 버튼으로 사내 문서 폴더를 지정하면 TXT/MD/PDF/CSV/DOCX 파일을 자동으로 수집하고 전처리합니다.
-- **하이브리드 검색**: Whoosh 기반 키워드 검색과 FAISS + SentenceTransformer 기반 벡터 검색을 동시에 수행하여 높은 검색 정밀도와 재현율을 제공합니다.
-- **LLM 답변 생성**: 추출한 문맥을 바탕으로 HuggingFace 모델(기본값: `google/flan-t5-base`) 또는 OpenAI API를 활용해 근거 중심 답변을 제공합니다.
-- **투명한 출처 제공**: 답변과 함께 사용된 문서 조각과 점수를 표시해 환각을 최소화하고 신뢰성을 높였습니다.
+- **문서 업로드 및 자동 인덱싱**: TXT, MD, PDF, CSV, DOCX 파일을 업로드하면 자동으로 전처리하여 키워드/벡터 인덱스를 동시에 생성합니다.
+- **하이브리드 검색 + LLM**: BM25 기반 키워드 검색과 Sentence-BERT + FAISS 기반 의미 검색을 조합해 관련 문서 조각을 찾고, HuggingFace 또는 OpenAI LLM이 근거 기반 답변을 생성합니다.
+- **출처가 포함된 Q&A**: 답변과 함께 사용된 문서 조각, 점수, 파일 경로를 제공하여 신뢰성을 보장합니다.
+- **관리자 대시보드**: 업로드된 문서 목록, 누적 질문 수, 평균 응답 속도, 최근 질문 내역 등 운영에 필요한 지표를 한눈에 확인할 수 있습니다.
 
-## 설치 및 실행 (Windows 10/11 기준)
+## 설치 및 실행
 
-1. **Python 설치**: Python 3.10 이상을 [공식 웹사이트](https://www.python.org/downloads/windows/)에서 설치합니다. 설치 시 "Add Python to PATH" 옵션을 활성화하세요.
-2. **가상환경 생성(선택)**:
-   ```powershell
-   python -m venv .venv
-   .\.venv\Scripts\activate
-   ```
-3. **필수 라이브러리 설치**:
-   ```powershell
-   pip install -r requirements.txt
-   ```
-4. **애플리케이션 실행**:
-   ```powershell
-   python -m kms_app.app
-   ```
-   실행 후 나타나는 창에서 `폴더 선택` 버튼을 눌러 문서 폴더를 마운트하고, 질문을 입력해 결과를 확인합니다.
+### 1. 환경 준비
 
-### OpenAI API 사용 (선택)
+```bash
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -r requirements.txt
+```
 
-기본 설정은 오픈소스 LLM(HuggingFace)입니다. OpenAI GPT-4 계열 모델을 사용하려면 다음을 추가 설정하세요.
+### 2. 웹 애플리케이션 실행
 
-1. OpenAI Python SDK 설치:
-   ```powershell
-   pip install openai
+```bash
+flask --app kms_app.webapp run --debug
+```
+
+브라우저에서 `http://127.0.0.1:5000`으로 접속하면 MindBase UI가 열립니다. 홈 화면에서 문서를 업로드하고 질문을 입력하면 답변을 확인할 수 있습니다.
+
+### 3. OpenAI API 연동(선택)
+
+기본값은 오픈소스 HuggingFace 모델(`google/flan-t5-base`)입니다. OpenAI GPT 계열 모델을 사용하려면 다음을 설정하세요.
+
+```bash
+pip install openai
+export OPENAI_API_KEY="sk-..."  # Windows PowerShell: setx OPENAI_API_KEY "sk-..."
+```
+
+`kms_app/config.py`에서 `llm_backend="openai"`로 변경하면 OpenAI ChatCompletion API를 사용합니다.
+
+### 4. GitHub에 소스 업로드하기
+
+MindBase를 사내 GitHub 또는 개인 저장소에 업로드하려면 아래 절차를 따르세요.
+
+1. GitHub에서 새 원격 저장소를 생성합니다.
+2. 현재 프로젝트 루트에서 기본 브랜치를 확인하고 초기 커밋을 완료합니다.
+
+   ```bash
+   git status
+   git add .
+   git commit -m "Initial MindBase commit"
    ```
-2. 환경 변수 설정 (PowerShell 예시):
-   ```powershell
-   setx OPENAI_API_KEY "sk-..."
+
+3. 원격 저장소를 등록하고 코드를 푸시합니다.
+
+   ```bash
+   git remote add origin https://github.com/<username>/<repository>.git
+   git push -u origin $(git branch --show-current)
    ```
-3. `kms_app/config.py`에서 `llm_backend="openai"`로 변경하거나 실행 시 환경 변수로 덮어쓸 수 있습니다.
+
+4. GitHub 웹 UI에서 README, 화면 스크린샷, 사용 가이드를 보강하면 온보딩이 더 수월해집니다.
 
 ## 프로젝트 구조
 
 ```
 kms_app/
 ├── __init__.py
-├── app.py                 # Tkinter 기반 데스크톱 UI
-├── config.py              # 전역 설정 및 경로 관리
+├── app.py                 # (선택) 기존 Tkinter 데스크톱 런처
+├── config.py              # 글로벌 설정 및 경로 관리
 ├── document_loader.py     # 문서 수집, 전처리, 청킹
 ├── indexer.py             # Whoosh + FAISS 하이브리드 인덱스
-└── llm.py                 # HuggingFace/OpenAI LLM 래퍼
+├── knowledge_base.py      # 인덱싱/통계/QA 서비스 계층
+├── llm.py                 # HuggingFace & OpenAI LLM 래퍼
+├── webapp.py              # Flask 애플리케이션 팩토리
+├── templates/             # Jinja2 템플릿 (사용자 홈, 관리자 대시보드)
+└── static/                # UI 스타일 자산
 requirements.txt           # 의존성 목록
 ```
 
-## 개발 로드맵 반영
+## 운영 팁
 
-- **1단계 (PoC)**: 소수 문서로 전처리-검색-생성 파이프라인을 검증할 수 있습니다.
-- **2단계**: 폴더 확장 시 자동으로 추가 문서를 인덱싱하여 정확도 향상.
-- **3단계**: LLM 출력 품질을 높이기 위해 `config.py`에서 프롬프트/모델을 변경.
-- **4단계**: 현재 Tkinter UI가 MVP 역할을 수행하여 현업 사용자가 직접 테스트 가능.
-- **5단계**: 파일럿 피드백을 통해 전처리 규칙, 하이브리드 가중치 조정.
-- **6단계**: 로컬 서버나 사내 PC에 배포하여 안정적인 운영이 가능합니다.
+- 인덱싱 결과와 업로드 파일은 사용자 홈 디렉터리의 `.kms_app/` 폴더에 저장됩니다. 필요 시 백업하거나 주기적으로 정리하세요.
+- 대량 문서를 처리할 때는 SentenceTransformer 모델을 GPU 가속 가능한 모델로 교체해 성능을 높일 수 있습니다.
+- HuggingFace 모델 로딩 시간이 길다면, 서버 기동 시점에 미리 Warm-up 요청을 보내는 것이 좋습니다.
+- OpenAI 대신 사내 LLM을 사용하려면 `LLMClient`에 새로운 백엔드를 추가하면 됩니다.
 
-## 추가 팁
+## 로드맵 매핑
 
-- 대량 문서 인덱싱 시 GPU 가속 SentenceTransformer 모델로 교체하면 속도를 높일 수 있습니다.
-- 인덱싱 결과는 사용자 홈 디렉터리의 `.kms_app/` 폴더에 저장되므로 반복 실행 시 재사용됩니다.
-- 보안을 위해 사내 전용 네트워크에서 실행하거나, 온프레미스 LLM을 연결할 수 있도록 구조를 단순하게 유지했습니다.
+- **단계 1~3**: 현재 구현으로 RAG 파이프라인·하이브리드 검색·LLM 품질 튜닝을 즉시 검증할 수 있습니다.
+- **단계 4**: Flask UI가 MVP 역할을 수행하며 사용자 피드백을 빠르게 수집할 수 있습니다.
+- **단계 5**: 관리자 대시보드에서 수집한 질문 로그와 성능 지표를 바탕으로 개선 사항을 파악할 수 있습니다.
+- **단계 6**: Docker 또는 가상환경을 활용해 온프레미스/클라우드 어디서든 배포 가능합니다.
 
 ## 라이선스
 
-이 프로젝트는 교육용 예제로 제공됩니다. 상용 환경에 적용 시 각 라이브러리의 라이선스를 확인하세요.
+이 프로젝트는 교육용 예제로 제공됩니다. 상용 도입 시 각 라이브러리의 라이선스를 확인하세요.

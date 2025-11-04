@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">지식 문서 업로드</h5>
+          <p class="card-text">
+            TXT, MD, PDF, CSV, DOCX 형식의 파일을 업로드하면 자동으로 전처리하고
+            인덱싱합니다.
+          </p>
+          <form action="{{ url_for('upload_documents') }}" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="documents" class="form-label">문서 선택</label>
+              <input
+                class="form-control"
+                type="file"
+                id="documents"
+                name="documents"
+                multiple
+                required
+              />
+              <div class="form-text">여러 개의 파일을 동시에 업로드할 수 있습니다.</div>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">업로드 및 인덱싱</button>
+          </form>
+        </div>
+      </div>
+      <div class="card shadow-sm mt-4">
+        <div class="card-body">
+          <h5 class="card-title">지표 요약</h5>
+          <ul class="list-unstyled mb-0">
+            <li>총 문서 수: <strong>{{ stats.total_documents }}</strong></li>
+            <li>총 청크 수: <strong>{{ stats.total_chunks }}</strong></li>
+            <li>질문 수: <strong>{{ stats.total_queries }}</strong></li>
+            <li>평균 응답 속도: <strong>{{ stats.average_latency_ms }} ms</strong></li>
+            <li>마지막 인덱싱: <strong>{{ stats.last_ingested_at or 'N/A' }}</strong></li>
+          </ul>
+        </div>
+      </div>
+      <div class="card shadow-sm mt-4">
+        <div class="card-body">
+          <h5 class="card-title">업로드된 문서</h5>
+          {% if documents %}
+          <ul class="list-group list-group-flush">
+            {% for doc in documents %}
+            <li class="list-group-item d-flex justify-content-between align-items-start">
+              <div>
+                <div class="fw-semibold">{{ doc.name }}</div>
+                <small class="text-muted">업데이트: {{ doc.modified }}</small>
+              </div>
+              <span class="badge bg-secondary rounded-pill">{{ doc.size }}</span>
+            </li>
+            {% endfor %}
+          </ul>
+          {% else %}
+          <p class="text-muted mb-0">아직 업로드된 문서가 없습니다.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-8">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+      <div class="alert-container">
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% endwith %}
+
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h4 class="card-title">자연어 질문</h4>
+          <form action="{{ url_for('ask_question') }}" method="post">
+            <div class="mb-3">
+              <label for="question" class="form-label">질문을 입력하세요</label>
+              <textarea
+                class="form-control"
+                id="question"
+                name="question"
+                rows="4"
+                placeholder="예: 최근 제품 매뉴얼 변경 사항을 요약해줘"
+              >{{ question or '' }}</textarea>
+            </div>
+            <button type="submit" class="btn btn-success">질문 실행</button>
+          </form>
+        </div>
+      </div>
+
+      {% if answer %}
+      <div class="card shadow-sm mb-4">
+        <div class="card-body">
+          <h4 class="card-title">MindBase 답변</h4>
+          <p class="card-text white-space-pre">{{ answer }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      {% if contexts %}
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <h5 class="card-title">참고한 문서 조각</h5>
+          <div class="accordion" id="contextAccordion">
+            {% for item in contexts %}
+            <div class="accordion-item">
+              <h2 class="accordion-header" id="heading{{ loop.index }}">
+                <button
+                  class="accordion-button {{ 'collapsed' if not loop.first }}"
+                  type="button"
+                  data-bs-toggle="collapse"
+                  data-bs-target="#collapse{{ loop.index }}"
+                  aria-expanded="{{ 'true' if loop.first else 'false' }}"
+                  aria-controls="collapse{{ loop.index }}"
+                >
+                  [{{ loop.index }}] {{ item.metadata.source }} · 점수 {{ '%.3f'|format(item.score) }}
+                </button>
+              </h2>
+              <div
+                id="collapse{{ loop.index }}"
+                class="accordion-collapse collapse {{ 'show' if loop.first }}"
+                aria-labelledby="heading{{ loop.index }}"
+                data-bs-parent="#contextAccordion"
+              >
+                <div class="accordion-body white-space-pre">{{ item.content }}</div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h2 class="mb-0">관리자 대시보드</h2>
+      <p class="text-muted mb-0">시스템 사용 현황과 문서 인덱싱 상태를 모니터링합니다.</p>
+    </div>
+    <a class="btn btn-outline-secondary" href="{{ url_for('home') }}">← 사용자 홈으로</a>
+  </div>
+
+  <div class="row g-4">
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">요약 지표</h5>
+          <ul class="list-unstyled mb-0">
+            <li class="mb-2">총 문서: <strong>{{ stats.total_documents }}</strong></li>
+            <li class="mb-2">총 청크: <strong>{{ stats.total_chunks }}</strong></li>
+            <li class="mb-2">누적 질문 수: <strong>{{ stats.total_queries }}</strong></li>
+            <li class="mb-2">평균 응답 속도: <strong>{{ stats.average_latency_ms }} ms</strong></li>
+            <li>마지막 인덱싱: <strong>{{ stats.last_ingested_at or 'N/A' }}</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">최근 질문</h5>
+          {% if stats.recent_questions %}
+          <ol class="mb-0 ps-3">
+            {% for question in stats.recent_questions %}
+            <li class="mb-2">{{ question }}</li>
+            {% endfor %}
+          </ol>
+          {% else %}
+          <p class="text-muted mb-0">기록된 질문이 없습니다.</p>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+    <div class="col-lg-4">
+      <div class="card shadow-sm h-100">
+        <div class="card-body">
+          <h5 class="card-title">관리 도구</h5>
+          <p class="text-muted">
+            지식베이스 전체를 다시 인덱싱하거나 파일을 교체한 뒤 업로드 탭에서 재구성하세요.
+          </p>
+          <form action="{{ url_for('upload_documents') }}" method="post" enctype="multipart/form-data">
+            <div class="mb-3">
+              <label for="adminDocuments" class="form-label">추가 문서 업로드</label>
+              <input class="form-control" type="file" id="adminDocuments" name="documents" multiple />
+            </div>
+            <button type="submit" class="btn btn-primary">업로드</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm mt-4">
+    <div class="card-body">
+      <h5 class="card-title">문서 인덱싱 현황</h5>
+      {% if documents %}
+      <div class="table-responsive">
+        <table class="table table-striped align-middle">
+          <thead>
+            <tr>
+              <th scope="col">파일명</th>
+              <th scope="col">크기</th>
+              <th scope="col">마지막 수정</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for doc in documents %}
+            <tr>
+              <td>{{ doc.name }}</td>
+              <td>{{ doc.size }}</td>
+              <td>{{ doc.modified }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="text-muted mb-0">현재 인덱싱된 문서가 없습니다.</p>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}
