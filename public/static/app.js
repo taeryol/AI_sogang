@@ -25,11 +25,22 @@ function initializeApp() {
 }
 
 function setupEventListeners() {
-  // Login/Logout
+  // Login/Logout/Register
   document.getElementById('loginBtn').addEventListener('click', showLoginModal);
+  document.getElementById('registerBtn').addEventListener('click', showRegisterModal);
   document.getElementById('logoutBtn').addEventListener('click', handleLogout);
-  document.getElementById('closeModalBtn').addEventListener('click', hideLoginModal);
+  document.getElementById('closeLoginBtn').addEventListener('click', hideLoginModal);
+  document.getElementById('closeRegisterBtn').addEventListener('click', hideRegisterModal);
   document.getElementById('loginForm').addEventListener('submit', handleLogin);
+  document.getElementById('registerForm').addEventListener('submit', handleRegister);
+  document.getElementById('switchToRegister').addEventListener('click', () => {
+    hideLoginModal();
+    showRegisterModal();
+  });
+  document.getElementById('switchToLogin').addEventListener('click', () => {
+    hideRegisterModal();
+    showLoginModal();
+  });
   
   // Chat
   document.getElementById('sendBtn').addEventListener('click', sendQuestion);
@@ -56,7 +67,10 @@ function checkAuthState() {
 
 function updateUIForLoggedIn() {
   document.getElementById('loginBtn').classList.add('hidden');
+  document.getElementById('registerBtn').classList.add('hidden');
   document.getElementById('logoutBtn').classList.remove('hidden');
+  document.getElementById('userInfo').classList.remove('hidden');
+  document.getElementById('userName').textContent = currentUser.name;
   document.getElementById('questionInput').disabled = false;
   document.getElementById('sendBtn').disabled = false;
   
@@ -71,7 +85,9 @@ function updateUIForLoggedIn() {
 
 function updateUIForLoggedOut() {
   document.getElementById('loginBtn').classList.remove('hidden');
+  document.getElementById('registerBtn').classList.remove('hidden');
   document.getElementById('logoutBtn').classList.add('hidden');
+  document.getElementById('userInfo').classList.add('hidden');
   document.getElementById('documentsBtn').classList.add('hidden');
   document.getElementById('questionInput').disabled = true;
   document.getElementById('sendBtn').disabled = true;
@@ -86,11 +102,20 @@ function hideLoginModal() {
   document.getElementById('loginForm').reset();
 }
 
+function showRegisterModal() {
+  document.getElementById('registerModal').classList.remove('hidden');
+}
+
+function hideRegisterModal() {
+  document.getElementById('registerModal').classList.add('hidden');
+  document.getElementById('registerForm').reset();
+}
+
 async function handleLogin(e) {
   e.preventDefault();
   
-  const email = document.getElementById('emailInput').value;
-  const password = document.getElementById('passwordInput').value;
+  const email = document.getElementById('loginEmail').value;
+  const password = document.getElementById('loginPassword').value;
   
   try {
     const response = await axios.post('/api/auth/login', {
@@ -111,6 +136,46 @@ async function handleLogin(e) {
   } catch (error) {
     console.error('Login failed:', error);
     showNotification('로그인 실패: ' + (error.response?.data?.error || '알 수 없는 오류'), 'error');
+  }
+}
+
+async function handleRegister(e) {
+  e.preventDefault();
+  
+  const name = document.getElementById('registerName').value;
+  const email = document.getElementById('registerEmail').value;
+  const password = document.getElementById('registerPassword').value;
+  const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+  
+  // Validate password match
+  if (password !== passwordConfirm) {
+    showNotification('비밀번호가 일치하지 않습니다', 'error');
+    return;
+  }
+  
+  // Validate password length
+  if (password.length < 6) {
+    showNotification('비밀번호는 최소 6자 이상이어야 합니다', 'error');
+    return;
+  }
+  
+  try {
+    const response = await axios.post('/api/auth/register', {
+      email,
+      password,
+      name,
+      role: 'user'
+    });
+    
+    hideRegisterModal();
+    showNotification('회원가입 성공! 로그인해주세요.', 'success');
+    
+    // Auto-fill login form
+    document.getElementById('loginEmail').value = email;
+    setTimeout(() => showLoginModal(), 500);
+  } catch (error) {
+    console.error('Registration failed:', error);
+    showNotification('회원가입 실패: ' + (error.response?.data?.error || '알 수 없는 오류'), 'error');
   }
 }
 

@@ -81,12 +81,18 @@ app.get('/', (c) => {
                         <button id="documentsBtn" class="text-gray-600 hover:text-gray-900 hidden">
                             <i class="fas fa-file-alt mr-2"></i>문서 관리
                         </button>
+                        <button id="registerBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-user-plus mr-2"></i>회원가입
+                        </button>
                         <button id="loginBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
                             <i class="fas fa-sign-in-alt mr-2"></i>로그인
                         </button>
                         <button id="logoutBtn" class="text-gray-600 hover:text-gray-900 hidden">
                             <i class="fas fa-sign-out-alt mr-2"></i>로그아웃
                         </button>
+                        <span id="userInfo" class="text-gray-700 hidden">
+                            <i class="fas fa-user mr-2"></i><span id="userName"></span>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -187,17 +193,54 @@ app.get('/', (c) => {
                 <form id="loginForm">
                     <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">이메일</label>
-                        <input type="email" id="emailInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <input type="email" id="loginEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     </div>
                     <div class="mb-6">
                         <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
-                        <input type="password" id="passwordInput" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        <input type="password" id="loginPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
                     </div>
                     <div class="flex space-x-3">
                         <button type="submit" class="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700">로그인</button>
-                        <button type="button" id="closeModalBtn" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">취소</button>
+                        <button type="button" id="closeLoginBtn" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">취소</button>
                     </div>
                 </form>
+                <div class="mt-4 text-center text-sm text-gray-600">
+                    <p>계정이 없으신가요? <button id="switchToRegister" class="text-blue-600 hover:underline">회원가입</button></p>
+                    <p class="mt-2 text-xs text-gray-500">개발 테스트 계정: admin@company.com / admin123</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Register Modal -->
+        <div id="registerModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+                <h2 class="text-2xl font-bold mb-6">회원가입</h2>
+                <form id="registerForm">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">이름</label>
+                        <input type="text" id="registerName" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">이메일</label>
+                        <input type="email" id="registerEmail" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호</label>
+                        <input type="password" id="registerPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required minlength="6">
+                        <p class="text-xs text-gray-500 mt-1">최소 6자 이상</p>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호 확인</label>
+                        <input type="password" id="registerPasswordConfirm" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required minlength="6">
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="submit" class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">가입하기</button>
+                        <button type="button" id="closeRegisterBtn" class="flex-1 bg-gray-200 text-gray-700 py-2 rounded-lg hover:bg-gray-300">취소</button>
+                    </div>
+                </form>
+                <div class="mt-4 text-center text-sm text-gray-600">
+                    <p>이미 계정이 있으신가요? <button id="switchToLogin" class="text-blue-600 hover:underline">로그인</button></p>
+                </div>
             </div>
         </div>
 
