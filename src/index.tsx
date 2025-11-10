@@ -8,6 +8,7 @@ import { Bindings, Variables } from './types/bindings';
 import authRoutes from './routes/auth';
 import documentsRoutes from './routes/documents';
 import queryRoutes from './routes/query';
+import adminRoutes from './routes/admin';
 
 const app = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -22,6 +23,7 @@ app.use('/static/*', serveStatic({ root: './public' }));
 app.route('/api/auth', authRoutes);
 app.route('/api/documents', documentsRoutes);
 app.route('/api/query', queryRoutes);
+app.route('/api/admin', adminRoutes);
 
 // Health check
 app.get('/api/health', (c) => {
@@ -30,6 +32,27 @@ app.get('/api/health', (c) => {
     timestamp: new Date().toISOString(),
     service: 'AI KMS'
   });
+});
+
+// Admin page
+app.get('/admin', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>관리자 페이지 - AI KMS</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-50">
+        <div id="app"></div>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/admin.js"></script>
+    </body>
+    </html>
+  `);
 });
 
 // Main page
@@ -81,6 +104,9 @@ app.get('/', (c) => {
                         <button id="documentsBtn" class="text-gray-600 hover:text-gray-900 hidden">
                             <i class="fas fa-file-alt mr-2"></i>문서 관리
                         </button>
+                        <a href="/admin" id="adminPageBtn" class="text-gray-600 hover:text-gray-900 hidden">
+                            <i class="fas fa-cog mr-2"></i>관리자 페이지
+                        </a>
                         <button id="registerBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
                             <i class="fas fa-user-plus mr-2"></i>회원가입
                         </button>
@@ -229,9 +255,17 @@ app.get('/', (c) => {
                         <input type="password" id="registerPassword" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required minlength="6">
                         <p class="text-xs text-gray-500 mt-1">최소 6자 이상</p>
                     </div>
-                    <div class="mb-6">
+                    <div class="mb-4">
                         <label class="block text-sm font-medium text-gray-700 mb-2">비밀번호 확인</label>
                         <input type="password" id="registerPasswordConfirm" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" required minlength="6">
+                    </div>
+                    <div class="mb-6 border-t pt-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">
+                            관리자 코드 (선택사항)
+                            <span class="text-xs text-gray-500 font-normal ml-2">관리자 권한이 필요한 경우만 입력</span>
+                        </label>
+                        <input type="text" id="registerAdminCode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500" placeholder="ADMIN-XXXXXXXX">
+                        <p class="text-xs text-purple-600 mt-1">💡 기본 개발 코드: ADMIN-SETUP-2025</p>
                     </div>
                     <div class="flex space-x-3">
                         <button type="submit" class="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700">가입하기</button>

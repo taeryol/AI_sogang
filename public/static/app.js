@@ -76,6 +76,7 @@ function updateUIForLoggedIn() {
   
   if (currentUser.role === 'admin') {
     document.getElementById('documentsBtn').classList.remove('hidden');
+    document.getElementById('adminPageBtn').classList.remove('hidden');
   }
   
   // Clear welcome message
@@ -89,6 +90,7 @@ function updateUIForLoggedOut() {
   document.getElementById('logoutBtn').classList.add('hidden');
   document.getElementById('userInfo').classList.add('hidden');
   document.getElementById('documentsBtn').classList.add('hidden');
+  document.getElementById('adminPageBtn').classList.add('hidden');
   document.getElementById('questionInput').disabled = true;
   document.getElementById('sendBtn').disabled = true;
 }
@@ -146,6 +148,7 @@ async function handleRegister(e) {
   const email = document.getElementById('registerEmail').value;
   const password = document.getElementById('registerPassword').value;
   const passwordConfirm = document.getElementById('registerPasswordConfirm').value;
+  const adminCode = document.getElementById('registerAdminCode').value.trim();
   
   // Validate password match
   if (password !== passwordConfirm) {
@@ -160,15 +163,24 @@ async function handleRegister(e) {
   }
   
   try {
-    const response = await axios.post('/api/auth/register', {
+    const payload = {
       email,
       password,
-      name,
-      role: 'user'
-    });
+      name
+    };
+    
+    // Add admin code if provided
+    if (adminCode) {
+      payload.adminCode = adminCode;
+    }
+    
+    const response = await axios.post('/api/auth/register', payload);
     
     hideRegisterModal();
-    showNotification('회원가입 성공! 로그인해주세요.', 'success');
+    
+    const userRole = response.data.user.role;
+    const roleText = userRole === 'admin' ? ' (관리자 권한)' : '';
+    showNotification(`회원가입 성공${roleText}! 로그인해주세요.`, 'success');
     
     // Auto-fill login form
     document.getElementById('loginEmail').value = email;

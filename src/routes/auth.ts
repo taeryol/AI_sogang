@@ -58,15 +58,33 @@ auth.post('/login', async (c) => {
 
 /**
  * POST /api/auth/register
- * User registration (admin only in production)
+ * User registration with optional admin code
  */
 auth.post('/register', async (c) => {
   try {
     const body = await c.req.json();
-    const { email, password, name, role = 'user' } = body;
+    const { email, password, name, adminCode } = body;
+    let role = 'user';
 
     if (!email || !password || !name) {
       return c.json({ error: 'Email, password, and name are required' }, 400);
+    }
+
+    // Check if admin code is provided
+    if (adminCode) {
+      const codeResult = await c.env.DB.prepare(
+        'SELECT id, is_used FROM admin_codes WHERE code = ?'
+      ).bind(adminCode).first();
+
+      if (!codeResult) {
+        return c.json({ error: 'Invalid admin code' }, 400);
+      }
+
+      if (codeResult.is_used) {
+        return c.json({ error: 'Admin code already used' }, 400);
+      }
+
+      role = 'admin';
     }
 
     // Check if user exists
@@ -94,6 +112,13 @@ auth.post('/register', async (c) => {
     const newUser = await c.env.DB.prepare(
       'SELECT id, email, name, role FROM users WHERE email = ?'
     ).bind(email).first();
+
+    // Mark admin code as used if provided
+    if (adminCode && newUser) {
+      await c.env.DB.prepare(
+        'UPDATE admin_codes SET is_used = 1, used_by = ?, used_at = CURRENT_TIMESTAMP WHERE code = ?'
+      ).bind(newUser.id, adminCode).run();
+    }
 
     return c.json({
       message: 'User created successfully',
