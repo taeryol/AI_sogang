@@ -1,0 +1,161 @@
+// Document processing service for chunking and text extraction
+
+export interface DocumentChunk {
+  content: string;
+  index: number;
+}
+
+export class DocumentProcessor {
+  /**
+   * Split text into chunks for embedding
+   * Uses simple paragraph-based chunking with overlap
+   */
+  static chunkText(text: string, chunkSize: number = 1000, overlap: number = 200): DocumentChunk[] {
+    const chunks: DocumentChunk[] = [];
+    
+    // Clean text
+    const cleanedText = text
+      .replace(/\r\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+
+    // Split by paragraphs first
+    const paragraphs = cleanedText.split(/\n\n+/);
+    
+    let currentChunk = '';
+    let chunkIndex = 0;
+
+    for (const paragraph of paragraphs) {
+      const trimmedParagraph = paragraph.trim();
+      
+      if (!trimmedParagraph) continue;
+
+      // If adding this paragraph would exceed chunk size
+      if (currentChunk.length + trimmedParagraph.length > chunkSize) {
+        if (currentChunk) {
+          chunks.push({
+            content: currentChunk.trim(),
+            index: chunkIndex++
+          });
+
+          // Keep overlap from previous chunk
+          const words = currentChunk.split(/\s+/);
+          const overlapWords = Math.floor(overlap / 5); // Approximate word count for overlap
+          currentChunk = words.slice(-overlapWords).join(' ') + '\n\n';
+        }
+      }
+
+      currentChunk += trimmedParagraph + '\n\n';
+    }
+
+    // Add the last chunk
+    if (currentChunk.trim()) {
+      chunks.push({
+        content: currentChunk.trim(),
+        index: chunkIndex
+      });
+    }
+
+    return chunks;
+  }
+
+  /**
+   * Extract text from plain text files
+   */
+  static async extractTextFromTXT(file: ArrayBuffer): Promise<string> {
+    const decoder = new TextDecoder('utf-8');
+    return decoder.decode(file);
+  }
+
+  /**
+   * Simple markdown extraction
+   */
+  static async extractTextFromMarkdown(file: ArrayBuffer): Promise<string> {
+    const decoder = new TextDecoder('utf-8');
+    const markdown = decoder.decode(file);
+    
+    // Remove markdown syntax (simple approach)
+    return markdown
+      .replace(/^#{1,6}\s+/gm, '') // Headers
+      .replace(/\*\*(.+?)\*\*/g, '$1') // Bold
+      .replace(/\*(.+?)\*/g, '$1') // Italic
+      .replace(/\[(.+?)\]\(.+?\)/g, '$1') // Links
+      .replace(/`{1,3}[^`]+`{1,3}/g, '') // Code
+      .replace(/^\s*[-*+]\s+/gm, '') // Lists
+      .trim();
+  }
+
+  /**
+   * Detect file type from filename
+   */
+  static getFileType(filename: string): string {
+    const ext = filename.split('.').pop()?.toLowerCase();
+    
+    switch (ext) {
+      case 'txt':
+        return 'text/plain';
+      case 'md':
+      case 'markdown':
+        return 'text/markdown';
+      case 'pdf':
+        return 'application/pdf';
+      case 'doc':
+      case 'docx':
+        return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      default:
+        return 'application/octet-stream';
+    }
+  }
+
+  /**
+   * Extract text based on file type
+   * Note: PDF and DOCX parsing requires external services in Cloudflare Workers
+   */
+  static async extractText(file: ArrayBuffer, fileType: string): Promise<string> {
+    switch (fileType) {
+      case 'text/plain':
+        return await this.extractTextFromTXT(file);
+      
+      case 'text/markdown':
+        return await this.extractTextFromMarkdown(file);
+      
+      case 'application/pdf':
+      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+        // For PDF and DOCX, we need external parsing services
+        // In production, use services like:
+        // - Adobe PDF Extract API
+        // - Docparser
+        // - Or upload to a parsing service
+        throw new Error(`File type ${fileType} requires external parsing service. Please use TXT or MD files for now.`);
+      
+      default:
+        throw new Error(`Unsupported file type: ${fileType}`);
+    }
+  }
+
+  /**
+   * Calculate BM25 score for keyword search
+   * Simplified implementation for in-memory search
+   */
+  static calculateBM25(query: string, document: string, avgDocLength: number, k1: number = 1.5, b: number = 0.75): number {
+    const queryTerms = query.toLowerCase().split(/\s+/);
+    const docTerms = document.toLowerCase().split(/\s+/);
+    const docLength = docTerms.length;
+    
+    let score = 0;
+    
+    for (const term of queryTerms) {
+      const termFreq = docTerms.filter(t => t === term).length;
+      
+      if (termFreq === 0) continue;
+      
+      // Simplified BM25 calculation
+      const idf = Math.log((1 + termFreq) / (termFreq + 1));
+      const tf = (termFreq * (k1 + 1)) / (termFreq + k1 * (1 - b + b * (docLength / avgDocLength)));
+      
+      score += idf * tf;
+    }
+    
+    return score;
+  }
+}
