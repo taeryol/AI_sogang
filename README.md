@@ -37,8 +37,9 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 ## URLs
 
 ### 프로덕션 환경
-- **애플리케이션**: https://624f5a63.webapp-31i.pages.dev
+- **애플리케이션**: https://e4b966ed.webapp-31i.pages.dev (최신)
 - **프로젝트 도메인**: https://webapp-31i.pages.dev
+- **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널 모두 작동)
 
 ### 개발 환경
 - **애플리케이션**: https://3000-i94tzifo3xt1qmlk5p5bs-cc2fbc16.sandbox.novita.ai
@@ -258,28 +259,25 @@ pm2 logs webapp --nostream
 - ✅ Cloudflare Pages 프로젝트 생성 완료
 - ✅ D1 데이터베이스 생성 및 마이그레이션 완료
 - ✅ 초기 관리자 계정 설정 완료
-- ⚠️ D1 바인딩 수동 설정 필요 (아래 참조)
+- ✅ D1 바인딩 설정 완료 (wrangler.toml 사용)
+- ✅ 로그인 및 관리자 기능 정상 작동 확인
 
-#### D1 데이터베이스 바인딩 설정 (필수)
+#### D1 데이터베이스 바인딩 설정 (완료)
 
-Cloudflare Dashboard에서 다음 단계를 수행하세요:
+D1 바인딩은 `wrangler.toml` 파일을 통해 자동으로 설정됩니다:
 
-1. **Cloudflare Dashboard 접속**
-   - https://dash.cloudflare.com
-   - Pages > `webapp` 프로젝트 선택
+```toml
+[[d1_databases]]
+binding = "DB"
+database_name = "webapp-production"
+database_id = "13864601-2e6a-4af5-969b-bb31dad0ff3d"
+```
 
-2. **Settings > Functions 메뉴로 이동**
-
-3. **D1 database bindings 섹션에서 "Add binding" 클릭**
-   - Variable name: `DB`
-   - D1 database: `webapp-production`
-   - Save 버튼 클릭
-
-4. **재배포**
-   ```bash
-   npm run build
-   npx wrangler pages deploy dist --project-name webapp
-   ```
+재배포 시 자동으로 바인딩이 적용됩니다:
+```bash
+npm run build
+npx wrangler pages deploy dist --project-name webapp
+```
 
 #### 프로덕션 테스트 계정
 
