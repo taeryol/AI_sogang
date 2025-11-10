@@ -42,17 +42,5 @@ CREATE INDEX IF NOT EXISTS idx_admin_codes_used ON admin_codes(is_used);
 CREATE INDEX IF NOT EXISTS idx_user_audit_log_user_id ON user_audit_log(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_audit_log_created_at ON user_audit_log(created_at);
 
--- Insert default admin code for first-time setup
-INSERT OR IGNORE INTO admin_codes (id, code, created_by) 
-VALUES (1, 'ADMIN-SETUP-2025', 1);
-
--- Insert default API settings placeholders
-INSERT OR IGNORE INTO api_settings (setting_key, setting_value, encrypted, updated_by) VALUES
-('openai_api_key', '', 1, 1),
-('openai_model', 'gpt-4', 0, 1),
-('embedding_model', 'text-embedding-3-small', 0, 1),
-('vector_db_type', 'simple', 0, 1),
-('pinecone_api_key', '', 1, 1),
-('pinecone_environment', '', 0, 1),
-('pinecone_index', 'kms-embeddings', 0, 1),
-('system_initialized', 'false', 0, 1);
+-- Note: Default admin code and API settings will be inserted after first user is created
+-- See seed-production.sql for initial data setup

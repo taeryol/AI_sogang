@@ -36,6 +36,10 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 
 ## URLs
 
+### 프로덕션 환경
+- **애플리케이션**: https://624f5a63.webapp-31i.pages.dev
+- **프로젝트 도메인**: https://webapp-31i.pages.dev
+
 ### 개발 환경
 - **애플리케이션**: https://3000-i94tzifo3xt1qmlk5p5bs-cc2fbc16.sandbox.novita.ai
 - **Health Check**: https://3000-i94tzifo3xt1qmlk5p5bs-cc2fbc16.sandbox.novita.ai/api/health
@@ -246,31 +250,60 @@ pm2 logs webapp --nostream
 
 ## 배포
 
-### Cloudflare Pages 배포
+### Cloudflare Pages 배포 완료! ✅
 
+**프로덕션 URL**: https://624f5a63.webapp-31i.pages.dev
+
+#### 배포 상태
+- ✅ Cloudflare Pages 프로젝트 생성 완료
+- ✅ D1 데이터베이스 생성 및 마이그레이션 완료
+- ✅ 초기 관리자 계정 설정 완료
+- ⚠️ D1 바인딩 수동 설정 필요 (아래 참조)
+
+#### D1 데이터베이스 바인딩 설정 (필수)
+
+Cloudflare Dashboard에서 다음 단계를 수행하세요:
+
+1. **Cloudflare Dashboard 접속**
+   - https://dash.cloudflare.com
+   - Pages > `webapp` 프로젝트 선택
+
+2. **Settings > Functions 메뉴로 이동**
+
+3. **D1 database bindings 섹션에서 "Add binding" 클릭**
+   - Variable name: `DB`
+   - D1 database: `webapp-production`
+   - Save 버튼 클릭
+
+4. **재배포**
+   ```bash
+   npm run build
+   npx wrangler pages deploy dist --project-name webapp
+   ```
+
+#### 프로덕션 테스트 계정
+
+배포 시 자동으로 생성된 관리자 계정:
+- **이메일**: admin@company.com
+- **비밀번호**: admin123
+- **역할**: 관리자
+
+#### 추가 관리자 생성
+
+관리자 코드를 사용하여 새 관리자 계정을 만들 수 있습니다:
+- **기본 관리자 코드**: `ADMIN-SETUP-2025`
+- 회원가입 시 "관리자 코드" 필드에 입력
+
+#### 환경 변수 설정 (선택사항)
+
+OpenAI API를 사용하려면 관리자 페이지에서 설정:
+1. 관리자 계정으로 로그인
+2. 상단 메뉴에서 "관리자" 클릭
+3. "API 설정" 탭에서 OpenAI API 키 입력
+
+또는 CLI로 설정:
 ```bash
-# Cloudflare API 토큰 설정 (최초 1회)
-# Deploy 탭에서 API 키 설정
-
-# 프로덕션 데이터베이스 생성
-npx wrangler d1 create webapp-production
-
-# wrangler.jsonc에 database_id 업데이트
-
-# 프로덕션 마이그레이션
-npm run db:migrate:prod
-
-# 배포
-npm run deploy:prod
-```
-
-### 환경 변수 설정 (프로덕션)
-
-```bash
-# Secrets 설정
 npx wrangler pages secret put OPENAI_API_KEY --project-name webapp
-npx wrangler pages secret put JWT_SECRET --project-name webapp
-npx wrangler pages secret put SESSION_SECRET --project-name webapp
 ```
 
 ## 프로젝트 구조
@@ -365,4 +398,30 @@ MIT License
 
 **마지막 업데이트**: 2025-11-10
 **버전**: 1.0.0
-**상태**: ✅ 개발 환경 구축 완료 / 🚧 프로덕션 배포 준비 중
+**상태**: ✅ 프로덕션 배포 완료
+
+## 관리자 기능
+
+### 관리자 패널 (/admin)
+
+관리자 계정으로 로그인하면 다음 기능에 접근할 수 있습니다:
+
+1. **대시보드**
+   - 시스템 통계 (사용자 수, 문서 수, 질의 수)
+   - 최근 질의 기록
+
+2. **사용자 관리**
+   - 전체 사용자 목록
+   - 사용자 역할 변경 (일반 사용자 ↔ 관리자)
+   - 사용자 삭제
+
+3. **API 설정**
+   - OpenAI API 키 및 모델 설정
+   - Vector DB 설정 (Simple / Pinecone)
+   - Pinecone 연동 설정
+
+4. **감사 로그**
+   - 모든 관리자 작업 기록 조회
+   - 사용자 권한 변경 이력
+
+자세한 내용은 [ADMIN_FEATURES_GUIDE.md](./ADMIN_FEATURES_GUIDE.md)를 참조하세요.
