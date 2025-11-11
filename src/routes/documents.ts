@@ -82,6 +82,7 @@ documents.post('/upload', verifyAuth, async (c) => {
     const userId = c.get('userId');
     const formData = await c.req.formData();
     const file = formData.get('file') as File;
+    const customTitle = formData.get('title') as string;
 
     if (!file) {
       return c.json({ error: 'No file provided' }, 400);
@@ -90,46 +91,55 @@ documents.post('/upload', verifyAuth, async (c) => {
     const filename = file.name;
     const fileType = DocumentProcessor.getFileType(filename);
     const fileSize = file.size;
+    const title = customTitle && customTitle.trim() ? customTitle.trim() : filename;
 
     // Check file size (max 10MB)
     if (fileSize > 10 * 1024 * 1024) {
       return c.json({ error: 'File too large (max 10MB)' }, 400);
     }
 
-    // Generate R2 key
-    const r2Key = `documents/${userId}/${Date.now()}-${filename}`;
-
-    // Upload to R2
+    // Read file content
     const arrayBuffer = await file.arrayBuffer();
-    await c.env.DOCUMENTS.put(r2Key, arrayBuffer, {
-      httpMetadata: {
-        contentType: fileType
-      }
-    });
+    
+    // Extract text content immediately for storage
+    let fileContent = '';
+    try {
+      fileContent = await DocumentProcessor.extractText(arrayBuffer, fileType);
+    } catch (error) {
+      console.error('Error extracting text:', error);
+      return c.json({ error: 'Failed to extract text from file. Please ensure the file is valid.' }, 400);
+    }
 
-    // Insert document record
+    if (!fileContent || fileContent.trim().length === 0) {
+      return c.json({ error: 'No text content found in the file' }, 400);
+    }
+
+    // Insert document record with file content stored in D1
     const result = await c.env.DB.prepare(
-      `INSERT INTO documents (title, filename, file_size, file_type, r2_key, uploaded_by, status)
+      `INSERT INTO documents (title, filename, file_size, file_type, file_content, uploaded_by, status)
        VALUES (?, ?, ?, ?, ?, ?, 'processing')`
-    ).bind(filename, filename, fileSize, fileType, r2Key, userId).run();
+    ).bind(title, filename, fileSize, fileType, fileContent, userId).run();
 
     const documentId = result.meta.last_row_id;
 
-    // Process document asynchronously (in real app, use a queue)
+    // Process document asynchronously (chunk and generate embeddings)
     c.executionCtx.waitUntil(
-      processDocument(c.env, documentId as number, arrayBuffer, fileType, filename)
+      processDocument(c.env, documentId as number, fileContent, title)
     );
 
     return c.json({
       id: documentId,
-      title: filename,
+      title,
       filename,
       status: 'processing',
       message: 'Document uploaded successfully. Processing...'
     }, 201);
   } catch (error) {
     console.error('Error uploading document:', error);
-    return c.json({ error: 'Failed to upload document' }, 500);
+    return c.json({ 
+      error: 'Failed to upload document',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    }, 500);
   }
 });
 
@@ -141,17 +151,14 @@ documents.delete('/:id', verifyAuth, requireAdmin, async (c) => {
   try {
     const documentId = parseInt(c.req.param('id'));
 
-    // Get document info
+    // Check if document exists
     const document = await c.env.DB.prepare(
-      'SELECT r2_key FROM documents WHERE id = ?'
+      'SELECT id FROM documents WHERE id = ?'
     ).bind(documentId).first();
 
     if (!document) {
       return c.json({ error: 'Document not found' }, 404);
     }
-
-    // Delete from R2
-    await c.env.DOCUMENTS.delete(document.r2_key as string);
 
     // Delete from vector DB
     await vectorDB.deleteByDocumentId(documentId);
@@ -174,21 +181,17 @@ documents.delete('/:id', verifyAuth, requireAdmin, async (c) => {
 });
 
 /**
- * Process document: extract text, chunk, generate embeddings
+ * Process document: chunk text and generate embeddings
  */
 async function processDocument(
   env: Bindings,
   documentId: number,
-  fileBuffer: ArrayBuffer,
-  fileType: string,
+  text: string,
   title: string
 ): Promise<void> {
   try {
-    // Extract text
-    const text = await DocumentProcessor.extractText(fileBuffer, fileType);
-
     if (!text || text.trim().length === 0) {
-      throw new Error('No text extracted from document');
+      throw new Error('No text content to process');
     }
 
     // Chunk text
