@@ -565,19 +565,33 @@ async function handleDocumentUpload() {
     
     let errorMessage = '문서 업로드 중 오류가 발생했습니다.';
     let detailsHtml = '';
+    let debugInfoHtml = '';
     
     if (error.response?.data?.error) {
       errorMessage = error.response.data.error;
       
       // Show stack trace if available
       if (error.response.data.details) {
-        detailsHtml = `<div class="mt-2 p-2 bg-red-100 rounded text-xs font-mono overflow-x-auto">${escapeHtml(error.response.data.details)}</div>`;
+        detailsHtml = `<div class="mt-2 p-2 bg-red-100 rounded text-xs font-mono overflow-x-auto whitespace-pre-wrap">${escapeHtml(error.response.data.details)}</div>`;
       }
     } else if (error.response?.status === 401) {
       errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
     } else if (error.response?.status === 413) {
       errorMessage = '파일 크기가 너무 큽니다.';
+    } else if (error.message) {
+      errorMessage += ' ' + error.message;
     }
+    
+    // Add debug information for mobile users
+    debugInfoHtml = `
+      <div class="mt-2 p-2 bg-gray-100 rounded text-xs">
+        <strong>디버그 정보:</strong><br>
+        - HTTP 상태: ${error.response?.status || 'N/A'}<br>
+        - 에러 타입: ${error.name || 'Unknown'}<br>
+        - 에러 메시지: ${escapeHtml(error.message || 'No message')}<br>
+        ${error.response?.data ? `- 서버 응답: ${escapeHtml(JSON.stringify(error.response.data).substring(0, 200))}` : ''}
+      </div>
+    `;
     
     uploadResult.className = 'mt-3 p-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-200';
     uploadResult.innerHTML = `
@@ -585,6 +599,7 @@ async function handleDocumentUpload() {
       <strong>업로드 실패</strong><br>
       <span class="text-xs">${escapeHtml(errorMessage)}</span>
       ${detailsHtml}
+      ${debugInfoHtml}
     `;
     uploadResult.classList.remove('hidden');
     
