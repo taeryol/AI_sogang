@@ -670,6 +670,56 @@ async function loadAPISettings() {
           </form>
         </div>
         
+        <!-- Document Parsing API Settings -->
+        <div class="bg-white rounded-lg border border-gray-200 p-6">
+          <h3 class="text-lg font-semibold text-gray-900 mb-4">
+            <i class="fas fa-file-pdf text-red-500 mr-2"></i>문서 파싱 API 설정
+          </h3>
+          <form onsubmit="saveParsingAPISettings(event)" class="space-y-4">
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+              <p class="text-sm text-blue-800">
+                <i class="fas fa-info-circle mr-2"></i>
+                PDF, DOCX, PPTX 파일을 업로드하려면 파싱 API 키가 필요합니다.
+              </p>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                LlamaParse API Key
+                <span class="text-xs text-green-600 ml-2">(권장)</span>
+              </label>
+              <input type="password" id="llamaparse_api_key" value="${settingsMap.llamaparse_api_key || ''}" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                placeholder="llx-...">
+              <p class="mt-1 text-xs text-gray-500">
+                <strong>무료:</strong> 1000 페이지/일 | 
+                <strong>지원:</strong> PDF, DOCX, PPTX, HTML
+              </p>
+              <a href="https://cloud.llamaindex.ai" target="_blank" class="text-xs text-blue-600 hover:underline">
+                <i class="fas fa-external-link-alt mr-1"></i>API 키 발급받기
+              </a>
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                PDF.co API Key
+                <span class="text-xs text-gray-500 ml-2">(선택)</span>
+              </label>
+              <input type="password" id="pdfco_api_key" value="${settingsMap.pdfco_api_key || ''}" 
+                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                placeholder="api-key-...">
+              <p class="mt-1 text-xs text-gray-500">
+                <strong>무료:</strong> 300 호출/월 | 
+                <strong>지원:</strong> PDF만
+              </p>
+              <a href="https://pdf.co" target="_blank" class="text-xs text-blue-600 hover:underline">
+                <i class="fas fa-external-link-alt mr-1"></i>API 키 발급받기
+              </a>
+            </div>
+            <button type="submit" class="w-full bg-purple-600 text-white py-2 px-4 rounded-lg hover:bg-purple-700 font-medium">
+              <i class="fas fa-save mr-2"></i>저장
+            </button>
+          </form>
+        </div>
+        
         <!-- Vector DB Settings -->
         <div class="bg-white rounded-lg border border-gray-200 p-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">
@@ -739,6 +789,29 @@ function togglePineconeSettings() {
     pineconeSettings.classList.remove('hidden');
   } else {
     pineconeSettings.classList.add('hidden');
+  }
+}
+
+async function saveParsingAPISettings(event) {
+  event.preventDefault();
+  
+  const settings = {
+    llamaparse_api_key: document.getElementById('llamaparse_api_key').value,
+    pdfco_api_key: document.getElementById('pdfco_api_key').value
+  };
+  
+  try {
+    for (const [key, value] of Object.entries(settings)) {
+      await axios.put(`/api/admin/settings/${key}`, 
+        { value },
+        { headers: { 'Authorization': `Bearer ${authToken}` } }
+      );
+    }
+    
+    showNotification('문서 파싱 API 설정이 저장되었습니다.', 'success');
+  } catch (error) {
+    console.error('[Admin] Failed to save parsing API settings:', error);
+    showError('설정 저장 실패: ' + (error.response?.data?.error || error.message));
   }
 }
 

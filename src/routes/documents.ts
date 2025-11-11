@@ -101,13 +101,28 @@ documents.post('/upload', verifyAuth, async (c) => {
     // Read file content
     const arrayBuffer = await file.arrayBuffer();
     
+    // Load parsing API keys from database
+    const llamaParseKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('llamaparse_api_key').first<{ setting_value: string }>();
+    
+    const pdfCoKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('pdfco_api_key').first<{ setting_value: string }>();
+    
+    const parsingConfig = {
+      llamaParseKey: llamaParseKeyResult?.setting_value,
+      pdfCoKey: pdfCoKeyResult?.setting_value
+    };
+    
     // Extract text content immediately for storage
     let fileContent = '';
     try {
-      fileContent = await DocumentProcessor.extractText(arrayBuffer, fileType);
+      fileContent = await DocumentProcessor.extractText(arrayBuffer, fileType, filename, parsingConfig);
     } catch (error) {
       console.error('Error extracting text:', error);
-      return c.json({ error: 'Failed to extract text from file. Please ensure the file is valid.' }, 400);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to extract text from file';
+      return c.json({ error: errorMessage }, 400);
     }
 
     if (!fileContent || fileContent.trim().length === 0) {

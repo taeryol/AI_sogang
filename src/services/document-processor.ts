@@ -1,8 +1,14 @@
 // Document processing service for chunking and text extraction
+import { DocumentParserAPI } from './document-parser-api';
 
 export interface DocumentChunk {
   content: string;
   index: number;
+}
+
+export interface ParsingConfig {
+  llamaParseKey?: string;
+  pdfCoKey?: string;
 }
 
 export class DocumentProcessor {
@@ -86,34 +92,25 @@ export class DocumentProcessor {
   }
 
   /**
-   * Extract text from PDF files
-   * Note: Cloudflare Workers doesn't support Node.js libraries like pdf-parse
-   * For production, integrate with external PDF parsing API
+   * Extract text from PDF/DOCX/PPTX using external parsing API
    */
-  static async extractTextFromPDF(file: ArrayBuffer): Promise<string> {
-    throw new Error(
-      'PDF 파일은 현재 지원되지 않습니다.\n\n' +
-      '📝 해결 방법:\n' +
-      '1. PDF를 텍스트 파일(.txt)로 변환하여 업로드\n' +
-      '2. PDF 내용을 복사하여 .txt 파일로 저장 후 업로드\n' +
-      '3. 온라인 변환 도구 사용: https://pdftotext.com\n\n' +
-      '💡 향후 업데이트에서 PDF 직접 지원 예정입니다.'
-    );
-  }
-
-  /**
-   * Extract text from DOCX files
-   * Note: DOCX parsing requires external service in Cloudflare Workers
-   */
-  static async extractTextFromDOCX(file: ArrayBuffer): Promise<string> {
-    throw new Error(
-      'DOCX 파일은 현재 지원되지 않습니다.\n\n' +
-      '📝 해결 방법:\n' +
-      '1. Word 문서를 텍스트 파일(.txt)로 저장\n' +
-      '2. 파일 → 다른 이름으로 저장 → 파일 형식: 텍스트 파일\n' +
-      '3. 저장된 .txt 파일을 업로드\n\n' +
-      '💡 향후 업데이트에서 DOCX 직접 지원 예정입니다.'
-    );
+  static async extractTextFromDocument(
+    file: ArrayBuffer,
+    filename: string,
+    fileType: string,
+    config: ParsingConfig
+  ): Promise<string> {
+    const result = await DocumentParserAPI.parseDocument(file, filename, fileType, config);
+    
+    if (result.error) {
+      throw new Error(result.error);
+    }
+    
+    if (!result.text || result.text.trim().length === 0) {
+      throw new Error('문서에서 텍스트를 추출할 수 없습니다.');
+    }
+    
+    return result.text.trim();
   }
 
   /**
@@ -130,9 +127,14 @@ export class DocumentProcessor {
         return 'text/markdown';
       case 'pdf':
         return 'application/pdf';
-      case 'doc':
       case 'docx':
         return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+      case 'doc':
+        return 'application/msword';
+      case 'pptx':
+        return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+      case 'ppt':
+        return 'application/vnd.ms-powerpoint';
       default:
         return 'application/octet-stream';
     }
@@ -141,7 +143,12 @@ export class DocumentProcessor {
   /**
    * Extract text based on file type
    */
-  static async extractText(file: ArrayBuffer, fileType: string): Promise<string> {
+  static async extractText(
+    file: ArrayBuffer,
+    fileType: string,
+    filename: string,
+    config?: ParsingConfig
+  ): Promise<string> {
     try {
       switch (fileType) {
         case 'text/plain':
@@ -151,13 +158,18 @@ export class DocumentProcessor {
           return await this.extractTextFromMarkdown(file);
         
         case 'application/pdf':
-          return await this.extractTextFromPDF(file);
-        
         case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-          return await this.extractTextFromDOCX(file);
+        case 'application/msword':
+        case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+        case 'application/vnd.ms-powerpoint':
+          // Use external API for complex documents
+          if (!config) {
+            throw new Error('파싱 API 설정이 필요합니다.');
+          }
+          return await this.extractTextFromDocument(file, filename, fileType, config);
         
         default:
-          throw new Error(`Unsupported file type: ${fileType}`);
+          throw new Error(`지원되지 않는 파일 형식입니다: ${fileType}`);
       }
     } catch (error) {
       console.error('Text extraction error:', error);
