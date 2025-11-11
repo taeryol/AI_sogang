@@ -93,12 +93,16 @@ export class DocumentParserAPI {
         attempts++;
       }
 
-      throw new Error('Parsing timeout (60 seconds exceeded)');
+      throw new Error('파싱 타임아웃 (60초 초과). 파일이 너무 크거나 복잡할 수 있습니다.');
     } catch (error) {
-      console.error('LlamaParse error:', error);
+      console.error('[LlamaParse] Exception caught:', error);
+      console.error('[LlamaParse] Error type:', error instanceof Error ? error.constructor.name : typeof error);
+      console.error('[LlamaParse] Error message:', error instanceof Error ? error.message : String(error));
+      
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       return {
         text: '',
-        error: error instanceof Error ? error.message : 'Unknown error'
+        error: `LlamaParse API 오류: ${errorMessage}`
       };
     }
   }

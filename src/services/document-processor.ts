@@ -99,16 +99,32 @@ export class DocumentProcessor {
     fileType: string,
     config: ParsingConfig
   ): Promise<string> {
+    console.log('[DocumentProcessor] Calling parseDocument...', {
+      filename,
+      fileType,
+      fileSize: file.byteLength
+    });
+    
     const result = await DocumentParserAPI.parseDocument(file, filename, fileType, config);
     
+    console.log('[DocumentProcessor] Parse result:', {
+      hasText: !!result.text,
+      textLength: result.text?.length || 0,
+      hasError: !!result.error,
+      error: result.error
+    });
+    
     if (result.error) {
-      throw new Error(result.error);
+      console.error('[DocumentProcessor] Parse error:', result.error);
+      throw new Error(`파싱 실패: ${result.error}`);
     }
     
     if (!result.text || result.text.trim().length === 0) {
-      throw new Error('문서에서 텍스트를 추출할 수 없습니다.');
+      console.error('[DocumentProcessor] Empty text after parsing');
+      throw new Error('문서에서 텍스트를 추출할 수 없습니다. 파일이 비어있거나 이미지만 포함되어 있을 수 있습니다.');
     }
     
+    console.log('[DocumentProcessor] Successfully extracted text, length:', result.text.length);
     return result.text.trim();
   }
 
