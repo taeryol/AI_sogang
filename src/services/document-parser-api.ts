@@ -19,6 +19,12 @@ export class DocumentParserAPI {
     apiKey: string
   ): Promise<ParseResult> {
     try {
+      console.log('[LlamaParse] Starting upload:', {
+        filename,
+        fileSize: file.byteLength,
+        keyPrefix: apiKey.substring(0, 4)
+      });
+      
       // Step 1: Upload document
       const formData = new FormData();
       formData.append('file', new Blob([file]), filename);
@@ -32,13 +38,17 @@ export class DocumentParserAPI {
         body: formData
       });
 
+      console.log('[LlamaParse] Upload response status:', uploadResponse.status);
+
       if (!uploadResponse.ok) {
         const error = await uploadResponse.text();
-        throw new Error(`LlamaParse upload failed: ${error}`);
+        console.error('[LlamaParse] Upload failed:', error);
+        throw new Error(`LlamaParse upload failed (${uploadResponse.status}): ${error}`);
       }
 
       const uploadResult = await uploadResponse.json();
       const jobId = uploadResult.id;
+      console.log('[LlamaParse] Job created:', jobId);
 
       // Step 2: Poll for completion (max 60 seconds)
       let attempts = 0;
@@ -58,17 +68,21 @@ export class DocumentParserAPI {
         );
 
         if (!statusResponse.ok) {
-          throw new Error('Failed to check parsing status');
+          console.error('[LlamaParse] Status check failed:', statusResponse.status);
+          throw new Error(`Failed to check parsing status (${statusResponse.status})`);
         }
 
         const statusResult = await statusResponse.json();
+        console.log('[LlamaParse] Status check:', { attempt: attempts + 1, status: statusResult.status });
         
         if (statusResult.status === 'SUCCESS') {
+          console.log('[LlamaParse] Parsing complete, text length:', statusResult.markdown?.length || statusResult.text?.length || 0);
           return {
             text: statusResult.markdown || statusResult.text || '',
             pages: statusResult.total_pages
           };
         } else if (statusResult.status === 'ERROR') {
+          console.error('[LlamaParse] Parsing error:', statusResult.error);
           throw new Error(statusResult.error || 'Parsing failed');
         }
         

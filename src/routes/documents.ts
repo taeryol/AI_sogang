@@ -106,8 +106,18 @@ documents.post('/upload', verifyAuth, async (c) => {
       'SELECT setting_value FROM api_settings WHERE setting_key = ?'
     ).bind('llamaparse_api_key').first<{ setting_value: string }>();
     
+    const llamaParseKey = llamaParseKeyResult?.setting_value?.trim();
+    
+    console.log('[Documents] Parsing config:', {
+      hasKey: !!llamaParseKey,
+      keyLength: llamaParseKey?.length,
+      keyPrefix: llamaParseKey?.substring(0, 4),
+      filename,
+      fileType
+    });
+    
     const parsingConfig = {
-      llamaParseKey: llamaParseKeyResult?.setting_value
+      llamaParseKey
     };
     
     // Extract text content immediately for storage
@@ -115,7 +125,7 @@ documents.post('/upload', verifyAuth, async (c) => {
     try {
       fileContent = await DocumentProcessor.extractText(arrayBuffer, fileType, filename, parsingConfig);
     } catch (error) {
-      console.error('Error extracting text:', error);
+      console.error('[Documents] Error extracting text:', error);
       const errorMessage = error instanceof Error ? error.message : 'Failed to extract text from file';
       return c.json({ error: errorMessage }, 400);
     }
