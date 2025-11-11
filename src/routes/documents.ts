@@ -123,14 +123,21 @@ documents.post('/upload', verifyAuth, async (c) => {
     // Extract text content immediately for storage
     let fileContent = '';
     try {
+      console.log('[Documents] Starting text extraction...');
       fileContent = await DocumentProcessor.extractText(arrayBuffer, fileType, filename, parsingConfig);
+      console.log('[Documents] Text extraction successful, length:', fileContent.length);
     } catch (error) {
       console.error('[Documents] Error extracting text:', error);
+      console.error('[Documents] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
       const errorMessage = error instanceof Error ? error.message : 'Failed to extract text from file';
-      return c.json({ error: errorMessage }, 400);
+      return c.json({ 
+        error: errorMessage,
+        details: error instanceof Error ? error.stack : undefined
+      }, 400);
     }
 
     if (!fileContent || fileContent.trim().length === 0) {
+      console.error('[Documents] Empty file content after extraction');
       return c.json({ error: 'No text content found in the file' }, 400);
     }
 
