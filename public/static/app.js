@@ -384,12 +384,21 @@ async function loadStats() {
   if (!authToken) return;
   
   try {
-    // This is a placeholder - in production, create an API endpoint for stats
+    const response = await axios.get('/api/documents/stats', {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+    
+    const stats = response.data;
+    document.getElementById('docCount').textContent = stats.totalDocuments || '0';
+    document.getElementById('queryCount').textContent = stats.totalQuestions || '0';
+    document.getElementById('avgResponse').textContent = stats.averageResponseTime ? `${stats.averageResponseTime}ms` : '-';
+  } catch (error) {
+    console.error('Failed to load stats:', error);
     document.getElementById('docCount').textContent = '-';
     document.getElementById('queryCount').textContent = '-';
     document.getElementById('avgResponse').textContent = '-';
-  } catch (error) {
-    console.error('Failed to load stats:', error);
   }
 }
 
@@ -480,22 +489,23 @@ async function handleDocumentUpload() {
     return;
   }
   
-  const file = fileInput.files[0];
-  const title = titleInput.value.trim() || file.name;
+  const files = Array.from(fileInput.files);
+  const customTitle = titleInput.value.trim();
   
-  // Validate file type
+  // Validate file types and sizes
   const validExtensions = ['.pdf', '.docx', '.doc', '.pptx', '.ppt', '.txt', '.md', '.markdown'];
-  const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
-  if (!validExtensions.includes(fileExtension)) {
-    showNotification('지원되지 않는 파일 형식입니다.\n\n지원 형식: PDF, DOCX, PPTX, TXT, MD', 'error');
-    return;
-  }
-  
-  // Validate file size (10MB limit)
   const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
-    showNotification('파일 크기는 10MB 이하여야 합니다.', 'error');
-    return;
+  
+  for (const file of files) {
+    const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+    if (!validExtensions.includes(fileExtension)) {
+      showNotification(`지원되지 않는 파일 형식: ${file.name}\n\n지원 형식: PDF, DOCX, PPTX, TXT, MD`, 'error');
+      return;
+    }
+    if (file.size > maxSize) {
+      showNotification(`파일 크기 초과: ${file.name}\n(최대 10MB)`, 'error');
+      return;
+    }
   }
   
   try {
@@ -503,43 +513,67 @@ async function handleDocumentUpload() {
     uploadBtn.disabled = true;
     uploadProgress.classList.remove('hidden');
     uploadResult.classList.add('hidden');
-    uploadStatus.textContent = '업로드 중...';
-    uploadProgressBar.style.width = '30%';
+    uploadStatus.textContent = `${files.length}개 파일 업로드 중...`;
+    uploadProgressBar.style.width = '0%';
     
-    // Prepare form data
-    const formData = new FormData();
-    formData.append('file', file);
-    formData.append('title', title);
+    const results = [];
+    const errors = [];
     
-    // Upload file
-    uploadStatus.textContent = '파일 업로드 중...';
-    const response = await axios.post('/api/documents/upload', formData, {
-      headers: {
-        'Authorization': `Bearer ${authToken}`,
-        'Content-Type': 'multipart/form-data'
-      },
-      onUploadProgress: (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 30) / progressEvent.total);
-        uploadProgressBar.style.width = percentCompleted + '%';
+    // Upload files one by one
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const title = customTitle || file.name;
+      
+      try {
+        uploadStatus.textContent = `업로드 중... (${i + 1}/${files.length}): ${file.name}`;
+        const progress = Math.round(((i) / files.length) * 100);
+        uploadProgressBar.style.width = progress + '%';
+        
+        // Prepare form data
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('title', title);
+        
+        // Upload file
+        const response = await axios.post('/api/documents/upload', formData, {
+          headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        
+        results.push({ filename: file.name, success: true });
+      } catch (error) {
+        console.error(`Upload error for ${file.name}:`, error);
+        errors.push({ 
+          filename: file.name, 
+          error: error.response?.data?.error || error.message 
+        });
       }
-    });
-    
-    uploadProgressBar.style.width = '60%';
-    uploadStatus.textContent = '문서 처리 중...';
-    
-    // Wait a bit for processing
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    }
     
     uploadProgressBar.style.width = '100%';
     uploadStatus.textContent = '완료!';
     
-    // Show success message
-    uploadResult.className = 'mt-3 p-3 rounded-lg text-sm bg-green-50 text-green-800 border border-green-200';
-    uploadResult.innerHTML = `
-      <i class="fas fa-check-circle mr-2"></i>
-      <strong>업로드 성공!</strong><br>
-      <span class="text-xs">문서: ${escapeHtml(title)}</span>
-    `;
+    // Show results
+    let resultHtml = '';
+    if (results.length > 0) {
+      resultHtml += `<div class="text-green-800"><i class="fas fa-check-circle mr-2"></i><strong>성공: ${results.length}개</strong></div>`;
+      results.forEach(r => {
+        resultHtml += `<div class="text-xs ml-6 mt-1">✓ ${escapeHtml(r.filename)}</div>`;
+      });
+    }
+    if (errors.length > 0) {
+      resultHtml += `<div class="text-red-800 mt-2"><i class="fas fa-exclamation-circle mr-2"></i><strong>실패: ${errors.length}개</strong></div>`;
+      errors.forEach(e => {
+        resultHtml += `<div class="text-xs ml-6 mt-1">✗ ${escapeHtml(e.filename)}: ${escapeHtml(e.error)}</div>`;
+      });
+    }
+    
+    uploadResult.className = results.length > 0 ? 
+      'mt-3 p-3 rounded-lg text-sm bg-green-50 border border-green-200' :
+      'mt-3 p-3 rounded-lg text-sm bg-red-50 border border-red-200';
+    uploadResult.innerHTML = resultHtml;
     uploadResult.classList.remove('hidden');
     
     // Reset form
@@ -551,9 +585,11 @@ async function handleDocumentUpload() {
       loadStats();
       uploadProgress.classList.add('hidden');
       uploadProgressBar.style.width = '0%';
-    }, 2000);
+    }, 3000);
     
-    showNotification('문서가 성공적으로 업로드되었습니다!', 'success');
+    if (results.length > 0) {
+      showNotification(`${results.length}개 문서가 성공적으로 업로드되었습니다!`, 'success');
+    }
     
   } catch (error) {
     console.error('Upload error:', error);

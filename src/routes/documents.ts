@@ -13,6 +13,38 @@ const documents = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 const vectorDB = new SimpleVectorDB();
 
 /**
+ * GET /api/documents/stats
+ * Get system statistics
+ */
+documents.get('/stats', verifyAuth, async (c) => {
+  try {
+    // Total documents
+    const totalDocs = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM documents'
+    ).first<{ count: number }>();
+
+    // Total questions
+    const totalQuestions = await c.env.DB.prepare(
+      'SELECT COUNT(*) as count FROM questions'
+    ).first<{ count: number }>();
+
+    // Average response time (last 100 queries)
+    const avgResponseTime = await c.env.DB.prepare(
+      'SELECT AVG(response_time) as avg_time FROM questions ORDER BY created_at DESC LIMIT 100'
+    ).first<{ avg_time: number }>();
+
+    return c.json({
+      totalDocuments: totalDocs?.count || 0,
+      totalQuestions: totalQuestions?.count || 0,
+      averageResponseTime: avgResponseTime?.avg_time ? Math.round(avgResponseTime.avg_time) : 0
+    });
+  } catch (error) {
+    console.error('Error fetching stats:', error);
+    return c.json({ error: 'Failed to fetch statistics' }, 500);
+  }
+});
+
+/**
  * GET /api/documents
  * List all documents
  */
