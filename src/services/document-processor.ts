@@ -8,7 +8,6 @@ export interface DocumentChunk {
 
 export interface ParsingConfig {
   llamaParseKey?: string;
-  pdfCoKey?: string;
 }
 
 export class DocumentProcessor {

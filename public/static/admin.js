@@ -685,7 +685,7 @@ async function loadAPISettings() {
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 LlamaParse API Key
-                <span class="text-xs text-green-600 ml-2">(권장)</span>
+                <span class="text-xs text-green-600 ml-2">(필수)</span>
               </label>
               <input type="password" id="llamaparse_api_key" value="${settingsMap.llamaparse_api_key || ''}" 
                 class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
@@ -695,22 +695,6 @@ async function loadAPISettings() {
                 <strong>지원:</strong> PDF, DOCX, PPTX, HTML
               </p>
               <a href="https://cloud.llamaindex.ai" target="_blank" class="text-xs text-blue-600 hover:underline">
-                <i class="fas fa-external-link-alt mr-1"></i>API 키 발급받기
-              </a>
-            </div>
-            <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">
-                PDF.co API Key
-                <span class="text-xs text-gray-500 ml-2">(선택)</span>
-              </label>
-              <input type="password" id="pdfco_api_key" value="${settingsMap.pdfco_api_key || ''}" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="api-key-...">
-              <p class="mt-1 text-xs text-gray-500">
-                <strong>무료:</strong> 300 호출/월 | 
-                <strong>지원:</strong> PDF만
-              </p>
-              <a href="https://pdf.co" target="_blank" class="text-xs text-blue-600 hover:underline">
                 <i class="fas fa-external-link-alt mr-1"></i>API 키 발급받기
               </a>
             </div>
@@ -796,8 +780,7 @@ async function saveParsingAPISettings(event) {
   event.preventDefault();
   
   const settings = {
-    llamaparse_api_key: document.getElementById('llamaparse_api_key').value,
-    pdfco_api_key: document.getElementById('pdfco_api_key').value
+    llamaparse_api_key: document.getElementById('llamaparse_api_key').value
   };
   
   try {

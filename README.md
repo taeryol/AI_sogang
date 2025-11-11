@@ -99,7 +99,7 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 
 2. **문서 업로드 및 처리**
    - ✅ **다양한 파일 형식 지원**: PDF, DOCX, PPTX, TXT, Markdown
-   - ✅ **외부 파싱 API 연동**: LlamaParse (권장) 및 PDF.co 지원
+   - ✅ **외부 파싱 API 연동**: LlamaParse API 지원
    - ✅ D1 데이터베이스에 직접 저장 (R2 불필요)
    - ✅ 자동 텍스트 추출 및 청킹 (1000자 단위, 200자 오버랩)
    - ✅ **메인 화면 문서 업로드**: 채팅 창 옆 사이드바에서 바로 문서 업로드 가능
@@ -133,7 +133,7 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 
 1. **고급 문서 처리**
    - ✅ TXT, Markdown 지원
-   - ✅ PDF 지원 (LlamaParse/PDF.co API 연동)
+   - ✅ PDF 지원 (LlamaParse API 연동)
    - ✅ DOCX 지원 (LlamaParse API 연동)
    - ✅ PPTX 지원 (LlamaParse API 연동)
    - 🚧 이미지 OCR (스캔본 PDF 지원)
@@ -252,9 +252,8 @@ pm2 logs webapp --nostream
 5. "업로드" 버튼 클릭
 6. 업로드 진행률 확인 후 완료!
 
-**⚙️ 중요**: PDF/DOCX/PPTX 파일을 업로드하려면 파싱 API 키가 필요합니다.
-- **LlamaParse** (권장): 무료 1000 페이지/일
-- **PDF.co** (백업): 무료 300 호출/월
+**⚙️ 중요**: PDF/DOCX/PPTX 파일을 업로드하려면 LlamaParse API 키가 필요합니다.
+- **LlamaParse**: 무료 1000 페이지/일, PDF/DOCX/PPTX/HTML 지원
 - 설정 방법: [PARSING_API_SETUP_GUIDE.md](./PARSING_API_SETUP_GUIDE.md) 참조
 
 #### 방법 2: 관리자 페이지에서 업로드
@@ -394,9 +393,8 @@ webapp/
 ### 문서 업로드 실패
 - **파일 크기 제한**: 10MB
 - **지원 형식**: PDF, DOCX, PPTX, TXT, Markdown
-- **파싱 API 필요**: PDF/DOCX/PPTX 파일은 외부 파싱 API 키 필요
-  - **LlamaParse** (권장): 무료 1000 페이지/일
-  - **PDF.co** (백업): 무료 300 호출/월
+- **파싱 API 필요**: PDF/DOCX/PPTX 파일은 LlamaParse API 키 필요
+  - **LlamaParse**: 무료 1000 페이지/일, PDF/DOCX/PPTX/HTML 지원
   - **설정 가이드**: [PARSING_API_SETUP_GUIDE.md](./PARSING_API_SETUP_GUIDE.md)
 - **API 미설정 시**: 명확한 에러 메시지와 설정 방법 안내
 - **빈 파일**: 텍스트가 없는 파일은 업로드 불가

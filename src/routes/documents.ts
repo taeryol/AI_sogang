@@ -106,13 +106,8 @@ documents.post('/upload', verifyAuth, async (c) => {
       'SELECT setting_value FROM api_settings WHERE setting_key = ?'
     ).bind('llamaparse_api_key').first<{ setting_value: string }>();
     
-    const pdfCoKeyResult = await c.env.DB.prepare(
-      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
-    ).bind('pdfco_api_key').first<{ setting_value: string }>();
-    
     const parsingConfig = {
-      llamaParseKey: llamaParseKeyResult?.setting_value,
-      pdfCoKey: pdfCoKeyResult?.setting_value
+      llamaParseKey: llamaParseKeyResult?.setting_value
     };
     
     // Extract text content immediately for storage

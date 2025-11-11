@@ -134,20 +134,25 @@ admin.put('/settings/:key', verifyAuth, requireAdmin, async (c) => {
   try {
     const settingKey = c.req.param('key');
     const adminId = c.get('userId');
-    const { value } = await c.req.json();
+    const body = await c.req.json();
+    const value = body.value;
 
-    if (!value || value.trim() === '') {
+    console.log('[Admin] Updating setting:', { settingKey, hasValue: !!value, valueLength: value?.length });
+
+    // Allow empty values to clear settings
+    if (value === undefined || value === null) {
       return c.json({ error: 'Value is required' }, 400);
     }
 
     // Update or insert setting
     await c.env.DB.prepare(
       `INSERT INTO api_settings (setting_key, setting_value, updated_by, encrypted) 
-       VALUES (?, ?, ?, 1)
+       VALUES (?, ?, ?, 0)
        ON CONFLICT(setting_key) 
        DO UPDATE SET setting_value = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP`
     ).bind(settingKey, value, adminId, value, adminId).run();
 
+    console.log('[Admin] Setting updated successfully:', settingKey);
     return c.json({ message: 'Setting updated successfully' });
   } catch (error) {
     console.error('Error updating setting:', error);
