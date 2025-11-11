@@ -557,14 +557,22 @@ async function handleDocumentUpload() {
     
   } catch (error) {
     console.error('Upload error:', error);
+    console.error('Error response:', error.response);
+    console.error('Error data:', error.response?.data);
     
     uploadProgress.classList.add('hidden');
     uploadProgressBar.style.width = '0%';
     
     let errorMessage = '문서 업로드 중 오류가 발생했습니다.';
+    let detailsHtml = '';
     
     if (error.response?.data?.error) {
       errorMessage = error.response.data.error;
+      
+      // Show stack trace if available
+      if (error.response.data.details) {
+        detailsHtml = `<div class="mt-2 p-2 bg-red-100 rounded text-xs font-mono overflow-x-auto">${escapeHtml(error.response.data.details)}</div>`;
+      }
     } else if (error.response?.status === 401) {
       errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
     } else if (error.response?.status === 413) {
@@ -576,6 +584,7 @@ async function handleDocumentUpload() {
       <i class="fas fa-exclamation-circle mr-2"></i>
       <strong>업로드 실패</strong><br>
       <span class="text-xs">${escapeHtml(errorMessage)}</span>
+      ${detailsHtml}
     `;
     uploadResult.classList.remove('hidden');
     

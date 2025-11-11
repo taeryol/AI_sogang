@@ -291,4 +291,30 @@ async function processDocument(
   }
 }
 
+/**
+ * GET /api/documents/debug-config
+ * Debug endpoint to check parsing configuration
+ */
+documents.get('/debug-config', verifyAuth, requireAdmin, async (c) => {
+  try {
+    const llamaParseKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('llamaparse_api_key').first<{ setting_value: string }>();
+    
+    const llamaParseKey = llamaParseKeyResult?.setting_value?.trim();
+    
+    return c.json({
+      hasLlamaParseKey: !!llamaParseKey,
+      keyLength: llamaParseKey?.length || 0,
+      keyPrefix: llamaParseKey?.substring(0, 7) || 'none',
+      message: llamaParseKey ? 'LlamaParse API key configured' : 'No API key found'
+    });
+  } catch (error) {
+    return c.json({ 
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, 500);
+  }
+});
+
 export default documents;
