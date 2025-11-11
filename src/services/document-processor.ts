@@ -121,7 +121,8 @@ export class DocumentProcessor {
     
     if (!result.text || result.text.trim().length === 0) {
       console.error('[DocumentProcessor] Empty text after parsing');
-      throw new Error('문서에서 텍스트를 추출할 수 없습니다. 파일이 비어있거나 이미지만 포함되어 있을 수 있습니다.');
+      console.error('[DocumentProcessor] Result object:', result);
+      throw new Error(`[v2] 문서 파싱은 성공했지만 텍스트가 비어있습니다. LlamaParse 응답 확인이 필요합니다. (pages: ${result.pages || 'unknown'})`);
     }
     
     console.log('[DocumentProcessor] Successfully extracted text, length:', result.text.length);

@@ -126,25 +126,31 @@ export class DocumentParserAPI {
           
           if (statusResult.markdown && statusResult.markdown.trim().length > 0) {
             extractedText = statusResult.markdown;
-            console.log('[LlamaParse] Using markdown field, length:', extractedText.length);
+            console.log('[LlamaParse] ✅ Using markdown field, length:', extractedText.length);
           } else if (statusResult.text && statusResult.text.trim().length > 0) {
             extractedText = statusResult.text;
-            console.log('[LlamaParse] Using text field, length:', extractedText.length);
+            console.log('[LlamaParse] ✅ Using text field, length:', extractedText.length);
           } else if (statusResult.result && typeof statusResult.result === 'string') {
             extractedText = statusResult.result;
-            console.log('[LlamaParse] Using result field, length:', extractedText.length);
+            console.log('[LlamaParse] ✅ Using result field, length:', extractedText.length);
           } else if (statusResult.content && typeof statusResult.content === 'string') {
             extractedText = statusResult.content;
-            console.log('[LlamaParse] Using content field, length:', extractedText.length);
+            console.log('[LlamaParse] ✅ Using content field, length:', extractedText.length);
           } else {
-            console.error('[LlamaParse] No text found in any expected field!');
+            console.error('[LlamaParse] ❌ No text found in any expected field!');
             console.error('[LlamaParse] Available fields:', Object.keys(statusResult));
-            console.error('[LlamaParse] Full result:', JSON.stringify(statusResult, null, 2));
+            console.error('[LlamaParse] Markdown value:', statusResult.markdown);
+            console.error('[LlamaParse] Text value:', statusResult.text);
+            console.error('[LlamaParse] Full result (stringified):', JSON.stringify(statusResult, null, 2).substring(0, 1000));
           }
+          
+          console.log('[LlamaParse] Final extracted text length:', extractedText.length);
+          console.log('[LlamaParse] Final extracted text preview:', extractedText.substring(0, 200));
           
           return {
             text: extractedText,
-            pages: statusResult.total_pages
+            pages: statusResult.total_pages,
+            error: extractedText.length === 0 ? 'LlamaParse returned empty text' : undefined
           };
         } else if (statusResult.status === 'ERROR') {
           console.error('[LlamaParse] Job failed with ERROR status');
