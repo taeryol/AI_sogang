@@ -81,7 +81,14 @@ query.post('/', verifyAuth, async (c) => {
 
     if (contexts.length === 0) {
       // No relevant information found
-      const noResultAnswer = '죄송합니다. 제공된 문서에서 관련 정보를 찾을 수 없습니다. 다른 키워드로 질문해 주시거나, 관련 문서를 업로드해 주세요.';
+      const noResultAnswer = `죄송합니다. 질문하신 내용과 관련된 문서를 찾을 수 없습니다. 😊
+
+📝 다음을 시도해보세요:
+• 다른 키워드로 질문하기
+• 관련 문서를 먼저 업로드하기 (상단 "문서 관리" 메뉴)
+• 더 구체적인 질문하기
+
+💡 팁: 시스템에 업로드된 문서가 ${await getDocumentCount(c.env.DB)}개 있습니다.`;
       
       // Log the query
       await c.env.DB.prepare(
@@ -246,6 +253,21 @@ query.post('/feedback', verifyAuth, async (c) => {
     return c.json({ error: 'Failed to submit feedback' }, 500);
   }
 });
+
+/**
+ * Get total document count
+ */
+async function getDocumentCount(db: D1Database): Promise<number> {
+  try {
+    const result = await db.prepare(
+      `SELECT COUNT(*) as count FROM documents WHERE status = 'indexed'`
+    ).first<{ count: number }>();
+    return result?.count || 0;
+  } catch (error) {
+    console.error('Error getting document count:', error);
+    return 0;
+  }
+}
 
 /**
  * Perform keyword-based search using BM25-like scoring
