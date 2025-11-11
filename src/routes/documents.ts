@@ -194,8 +194,19 @@ async function processDocument(
     // Chunk text
     const chunks = DocumentProcessor.chunkText(text);
 
+    // Load API key from database
+    const apiKeyResult = await env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('openai_api_key').first<{ setting_value: string }>();
+
+    if (!apiKeyResult || !apiKeyResult.setting_value) {
+      throw new Error('OpenAI API key not configured');
+    }
+
+    const apiKey = apiKeyResult.setting_value;
+
     // Initialize OpenAI service
-    const openai = new OpenAIService(env.OPENAI_API_KEY);
+    const openai = new OpenAIService(apiKey);
 
     // Generate embeddings and store chunks
     for (const chunk of chunks) {

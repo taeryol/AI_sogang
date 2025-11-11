@@ -260,8 +260,25 @@ async function sendQuestion() {
   } catch (error) {
     console.error('Query failed:', error);
     removeLoadingMessage(loadingId);
-    addMessage('ai', '죄송합니다. 질문을 처리하는 중 오류가 발생했습니다. 다시 시도해주세요.', [], 0);
-    showNotification('질문 처리 실패: ' + (error.response?.data?.error || '알 수 없는 오류'), 'error');
+    
+    // Get detailed error message
+    const errorData = error.response?.data;
+    let errorMessage = '죄송합니다. 질문을 처리하는 중 오류가 발생했습니다.';
+    
+    if (errorData) {
+      if (errorData.code === 'NO_API_KEY') {
+        errorMessage = '⚠️ OpenAI API 키가 설정되지 않았습니다.\n\n관리자에게 문의하거나, 관리자라면 "관리자 페이지 > API 설정"에서 OpenAI API 키를 설정해주세요.';
+      } else if (errorData.code === 'INVALID_API_KEY') {
+        errorMessage = '⚠️ OpenAI API 키가 유효하지 않습니다.\n\n관리자는 "관리자 페이지 > API 설정"에서 올바른 API 키를 다시 설정해주세요.';
+      } else if (errorData.code === 'QUOTA_EXCEEDED') {
+        errorMessage = '⚠️ OpenAI API 사용 한도를 초과했습니다.\n\nOpenAI 계정에 크레딧을 충전하거나 잠시 후 다시 시도해주세요.';
+      } else if (errorData.error) {
+        errorMessage = errorData.error;
+      }
+    }
+    
+    addMessage('ai', errorMessage, [], 0);
+    showNotification(errorData?.error || '질문 처리 실패', 'error');
   } finally {
     // Re-enable input
     input.disabled = false;

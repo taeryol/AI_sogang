@@ -29,8 +29,22 @@ query.post('/', verifyAuth, async (c) => {
       return c.json({ error: 'Question is required' }, 400);
     }
 
+    // Load API settings from database
+    const apiKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('openai_api_key').first<{ setting_value: string }>();
+
+    if (!apiKeyResult || !apiKeyResult.setting_value) {
+      return c.json({ 
+        error: 'OpenAI API 키가 설정되지 않았습니다. 관리자 페이지에서 API 설정을 완료해주세요.',
+        code: 'NO_API_KEY'
+      }, 400);
+    }
+
+    const apiKey = apiKeyResult.setting_value;
+
     // Initialize OpenAI service
-    const openai = new OpenAIService(c.env.OPENAI_API_KEY);
+    const openai = new OpenAIService(apiKey);
 
     // Step 1: Generate embedding for the question
     const questionEmbedding = await openai.generateEmbedding(question);
@@ -122,14 +136,43 @@ query.post('/', verifyAuth, async (c) => {
     const userId = c.get('userId');
     const body = await c.req.json().catch(() => ({ question: '' }));
 
+    // Determine error type and message
+    let errorMessage = 'Failed to process query';
+    let errorCode = 'UNKNOWN_ERROR';
+    
+    if (error instanceof Error) {
+      const errorMsg = error.message.toLowerCase();
+      
+      if (errorMsg.includes('api key') || errorMsg.includes('unauthorized') || errorMsg.includes('401')) {
+        errorMessage = 'OpenAI API 키가 유효하지 않습니다. 관리자 페이지에서 올바른 API 키를 설정해주세요.';
+        errorCode = 'INVALID_API_KEY';
+      } else if (errorMsg.includes('quota') || errorMsg.includes('rate limit')) {
+        errorMessage = 'OpenAI API 사용 한도를 초과했습니다. OpenAI 계정에 크레딧을 충전하거나 잠시 후 다시 시도해주세요.';
+        errorCode = 'QUOTA_EXCEEDED';
+      } else if (errorMsg.includes('model')) {
+        errorMessage = 'OpenAI 모델 접근 오류입니다. 관리자 페이지에서 사용 가능한 모델을 선택해주세요.';
+        errorCode = 'MODEL_ERROR';
+      } else if (errorMsg.includes('network') || errorMsg.includes('fetch')) {
+        errorMessage = 'OpenAI API 연결 오류입니다. 네트워크 상태를 확인하거나 잠시 후 다시 시도해주세요.';
+        errorCode = 'NETWORK_ERROR';
+      } else {
+        errorMessage = `처리 중 오류가 발생했습니다: ${error.message}`;
+      }
+    }
+
     // Log failed query
-    await c.env.DB.prepare(
-      `INSERT INTO queries (user_id, question, status, response_time_ms)
-       VALUES (?, ?, 'failed', ?)`
-    ).bind(userId, body.question, responseTimeMs).run();
+    try {
+      await c.env.DB.prepare(
+        `INSERT INTO queries (user_id, question, status, response_time_ms)
+         VALUES (?, ?, 'failed', ?)`
+      ).bind(userId, body.question, responseTimeMs).run();
+    } catch (dbError) {
+      console.error('Failed to log error to database:', dbError);
+    }
 
     return c.json({ 
-      error: 'Failed to process query',
+      error: errorMessage,
+      code: errorCode,
       details: error instanceof Error ? error.message : 'Unknown error'
     }, 500);
   }
