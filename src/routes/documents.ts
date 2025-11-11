@@ -332,4 +332,80 @@ documents.get('/debug-config', verifyAuth, requireAdmin, async (c) => {
   }
 });
 
+/**
+ * POST /api/documents/test-parse
+ * Debug endpoint to test actual file parsing with detailed error logging
+ */
+documents.post('/test-parse', verifyAuth, requireAdmin, async (c) => {
+  try {
+    const formData = await c.req.formData();
+    const file = formData.get('file') as File;
+    
+    if (!file) {
+      return c.json({ error: 'No file provided' }, 400);
+    }
+    
+    // Load API key
+    const llamaParseKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('llamaparse_api_key').first<{ setting_value: string }>();
+    
+    const apiKey = llamaParseKeyResult?.setting_value?.trim();
+    
+    if (!apiKey) {
+      return c.json({ error: 'No LlamaParse API key configured' }, 400);
+    }
+    
+    const arrayBuffer = await file.arrayBuffer();
+    const filename = file.name;
+    
+    console.log('[TestParse] Starting test with file:', filename, 'Size:', arrayBuffer.byteLength);
+    
+    // Call LlamaParse directly
+    const formData2 = new FormData();
+    const blob = new Blob([arrayBuffer], { type: file.type });
+    formData2.append('file', blob, filename);
+    
+    const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
+      },
+      body: formData2
+    });
+    
+    const responseStatus = uploadResponse.status;
+    const responseHeaders = Object.fromEntries(uploadResponse.headers.entries());
+    const responseBody = await uploadResponse.text();
+    
+    console.log('[TestParse] Response status:', responseStatus);
+    console.log('[TestParse] Response headers:', responseHeaders);
+    console.log('[TestParse] Response body:', responseBody);
+    
+    // Try to parse as JSON
+    let parsedResponse;
+    try {
+      parsedResponse = JSON.parse(responseBody);
+    } catch {
+      parsedResponse = null;
+    }
+    
+    return c.json({
+      success: uploadResponse.ok,
+      status: responseStatus,
+      headers: responseHeaders,
+      bodyRaw: responseBody,
+      bodyParsed: parsedResponse,
+      message: uploadResponse.ok ? 'Upload successful' : 'Upload failed'
+    });
+  } catch (error) {
+    console.error('[TestParse] Exception:', error);
+    return c.json({
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined
+    }, 500);
+  }
+});
+
 export default documents;
