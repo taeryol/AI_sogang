@@ -54,6 +54,9 @@ function setupEventListeners() {
   // Navigation
   document.getElementById('historyBtn').addEventListener('click', showHistory);
   document.getElementById('documentsBtn').addEventListener('click', showDocuments);
+  
+  // Document Upload
+  document.getElementById('uploadBtn').addEventListener('click', handleDocumentUpload);
 }
 
 function checkAuthState() {
@@ -74,6 +77,10 @@ function updateUIForLoggedIn() {
   document.getElementById('questionInput').disabled = false;
   document.getElementById('sendBtn').disabled = false;
   
+  // Show upload form
+  document.getElementById('uploadLoginPrompt').classList.add('hidden');
+  document.getElementById('uploadForm').classList.remove('hidden');
+  
   if (currentUser.role === 'admin') {
     document.getElementById('documentsBtn').classList.remove('hidden');
     document.getElementById('adminPageBtn').classList.remove('hidden');
@@ -93,6 +100,10 @@ function updateUIForLoggedOut() {
   document.getElementById('adminPageBtn').classList.add('hidden');
   document.getElementById('questionInput').disabled = true;
   document.getElementById('sendBtn').disabled = true;
+  
+  // Hide upload form
+  document.getElementById('uploadLoginPrompt').classList.remove('hidden');
+  document.getElementById('uploadForm').classList.add('hidden');
 }
 
 function showLoginModal() {
@@ -451,4 +462,125 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text;
   return div.innerHTML;
+}
+
+// Document Upload Functions
+async function handleDocumentUpload() {
+  const fileInput = document.getElementById('documentFile');
+  const titleInput = document.getElementById('documentTitle');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const uploadProgress = document.getElementById('uploadProgress');
+  const uploadStatus = document.getElementById('uploadStatus');
+  const uploadProgressBar = document.getElementById('uploadProgressBar');
+  const uploadResult = document.getElementById('uploadResult');
+  
+  // Validate file selection
+  if (!fileInput.files || fileInput.files.length === 0) {
+    showNotification('파일을 선택해주세요', 'error');
+    return;
+  }
+  
+  const file = fileInput.files[0];
+  const title = titleInput.value.trim() || file.name;
+  
+  // Validate file type
+  const validExtensions = ['.pdf', '.txt', '.docx'];
+  const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+  if (!validExtensions.includes(fileExtension)) {
+    showNotification('지원하지 않는 파일 형식입니다. PDF, TXT, DOCX 파일만 업로드 가능합니다.', 'error');
+    return;
+  }
+  
+  // Validate file size (10MB limit)
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    showNotification('파일 크기는 10MB 이하여야 합니다.', 'error');
+    return;
+  }
+  
+  try {
+    // Show progress
+    uploadBtn.disabled = true;
+    uploadProgress.classList.remove('hidden');
+    uploadResult.classList.add('hidden');
+    uploadStatus.textContent = '업로드 중...';
+    uploadProgressBar.style.width = '30%';
+    
+    // Prepare form data
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('title', title);
+    
+    // Upload file
+    uploadStatus.textContent = '파일 업로드 중...';
+    const response = await axios.post('/api/documents/upload', formData, {
+      headers: {
+        'Authorization': `Bearer ${authToken}`,
+        'Content-Type': 'multipart/form-data'
+      },
+      onUploadProgress: (progressEvent) => {
+        const percentCompleted = Math.round((progressEvent.loaded * 30) / progressEvent.total);
+        uploadProgressBar.style.width = percentCompleted + '%';
+      }
+    });
+    
+    uploadProgressBar.style.width = '60%';
+    uploadStatus.textContent = '문서 처리 중...';
+    
+    // Wait a bit for processing
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
+    uploadProgressBar.style.width = '100%';
+    uploadStatus.textContent = '완료!';
+    
+    // Show success message
+    uploadResult.className = 'mt-3 p-3 rounded-lg text-sm bg-green-50 text-green-800 border border-green-200';
+    uploadResult.innerHTML = `
+      <i class="fas fa-check-circle mr-2"></i>
+      <strong>업로드 성공!</strong><br>
+      <span class="text-xs">문서: ${escapeHtml(title)}</span>
+    `;
+    uploadResult.classList.remove('hidden');
+    
+    // Reset form
+    fileInput.value = '';
+    titleInput.value = '';
+    
+    // Reload stats
+    setTimeout(() => {
+      loadStats();
+      uploadProgress.classList.add('hidden');
+      uploadProgressBar.style.width = '0%';
+    }, 2000);
+    
+    showNotification('문서가 성공적으로 업로드되었습니다!', 'success');
+    
+  } catch (error) {
+    console.error('Upload error:', error);
+    
+    uploadProgress.classList.add('hidden');
+    uploadProgressBar.style.width = '0%';
+    
+    let errorMessage = '문서 업로드 중 오류가 발생했습니다.';
+    
+    if (error.response?.data?.error) {
+      errorMessage = error.response.data.error;
+    } else if (error.response?.status === 401) {
+      errorMessage = '인증이 만료되었습니다. 다시 로그인해주세요.';
+    } else if (error.response?.status === 413) {
+      errorMessage = '파일 크기가 너무 큽니다.';
+    }
+    
+    uploadResult.className = 'mt-3 p-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-200';
+    uploadResult.innerHTML = `
+      <i class="fas fa-exclamation-circle mr-2"></i>
+      <strong>업로드 실패</strong><br>
+      <span class="text-xs">${escapeHtml(errorMessage)}</span>
+    `;
+    uploadResult.classList.remove('hidden');
+    
+    showNotification(errorMessage, 'error');
+  } finally {
+    uploadBtn.disabled = false;
+  }
 }

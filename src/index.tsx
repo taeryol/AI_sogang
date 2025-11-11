@@ -176,6 +176,59 @@ app.get('/', (c) => {
 
                 <!-- Sidebar -->
                 <div class="space-y-6">
+                    <!-- Document Upload Card -->
+                    <div class="bg-white rounded-lg shadow p-6" id="uploadSection">
+                        <h3 class="text-lg font-semibold mb-4">
+                            <i class="fas fa-cloud-upload-alt text-blue-600 mr-2"></i>문서 업로드
+                        </h3>
+                        <div id="uploadLoginPrompt" class="text-center py-8">
+                            <i class="fas fa-lock text-gray-400 text-4xl mb-3"></i>
+                            <p class="text-sm text-gray-500 mb-3">로그인하여 문서를 업로드하세요</p>
+                            <button onclick="document.getElementById('loginBtn').click()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm">
+                                <i class="fas fa-sign-in-alt mr-2"></i>로그인
+                            </button>
+                        </div>
+                        <div id="uploadForm" class="hidden">
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    파일 선택
+                                    <span class="text-xs text-gray-500 ml-2">(PDF, TXT, DOCX)</span>
+                                </label>
+                                <input 
+                                    type="file" 
+                                    id="documentFile" 
+                                    accept=".pdf,.txt,.docx"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                            </div>
+                            <div class="mb-4">
+                                <label class="block text-sm font-medium text-gray-700 mb-2">제목</label>
+                                <input 
+                                    type="text" 
+                                    id="documentTitle" 
+                                    placeholder="문서 제목 (선택사항)"
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                            </div>
+                            <button 
+                                id="uploadBtn"
+                                class="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                            >
+                                <i class="fas fa-upload mr-2"></i>업로드
+                            </button>
+                            <div id="uploadProgress" class="hidden mt-3">
+                                <div class="flex items-center text-sm text-blue-600">
+                                    <i class="fas fa-spinner fa-spin mr-2"></i>
+                                    <span id="uploadStatus">업로드 중...</span>
+                                </div>
+                                <div class="w-full bg-gray-200 rounded-full h-2 mt-2">
+                                    <div id="uploadProgressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                </div>
+                            </div>
+                            <div id="uploadResult" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
+                        </div>
+                    </div>
+
                     <!-- Stats Card -->
                     <div class="bg-white rounded-lg shadow p-6">
                         <h3 class="text-lg font-semibold mb-4">
