@@ -800,82 +800,30 @@ async function testLlamaParseKey() {
   resultDiv.classList.remove('hidden');
   
   try {
-    // Create a test file (empty text file)
-    const testContent = 'LlamaParse API Test';
-    const blob = new Blob([testContent], { type: 'text/plain' });
-    const formData = new FormData();
-    formData.append('file', blob, 'test.txt');
+    // Call backend proxy to test API key (avoids CORS issues)
+    const response = await axios.post('/api/admin/test-llamaparse', 
+      { apiKey },
+      { headers: { 'Authorization': `Bearer ${authToken}` } }
+    );
     
-    // Step 1: Upload test file
-    const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${apiKey}`,
-        'Accept': 'application/json'
-      },
-      body: formData
-    });
-    
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      throw new Error(`Upload failed (${uploadResponse.status}): ${errorText}`);
+    if (response.data.success) {
+      resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs';
+      resultDiv.innerHTML = `
+        <i class="fas fa-check-circle mr-1"></i>
+        <strong>API 키 정상 작동!</strong><br>
+        <span class="text-xs">Job ID: ${response.data.jobId}</span>
+      `;
+    } else {
+      throw new Error(response.data.error || 'API test failed');
     }
-    
-    const uploadResult = await uploadResponse.json();
-    const jobId = uploadResult.id;
-    
-    // Step 2: Check job status (wait max 10 seconds)
-    let attempts = 0;
-    const maxAttempts = 5;
-    
-    while (attempts < maxAttempts) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      const statusResponse = await fetch(
-        `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Accept': 'application/json'
-          }
-        }
-      );
-      
-      if (!statusResponse.ok) {
-        throw new Error(`Status check failed (${statusResponse.status})`);
-      }
-      
-      const statusResult = await statusResponse.json();
-      
-      if (statusResult.status === 'SUCCESS') {
-        resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs';
-        resultDiv.innerHTML = `
-          <i class="fas fa-check-circle mr-1"></i>
-          <strong>API 키 정상 작동!</strong><br>
-          <span class="text-xs">Job ID: ${jobId}</span>
-        `;
-        return;
-      } else if (statusResult.status === 'ERROR') {
-        throw new Error(statusResult.error || 'Parsing failed');
-      }
-      
-      attempts++;
-    }
-    
-    // Timeout but job was created successfully
-    resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs';
-    resultDiv.innerHTML = `
-      <i class="fas fa-check-circle mr-1"></i>
-      <strong>API 키 정상 작동!</strong> (Job 생성 성공)<br>
-      <span class="text-xs">Job ID: ${jobId}</span>
-    `;
   } catch (error) {
     console.error('[Admin] LlamaParse test error:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
     resultDiv.className = 'mt-2 p-2 rounded bg-red-50 text-red-800 text-xs';
     resultDiv.innerHTML = `
       <i class="fas fa-times-circle mr-1"></i>
       <strong>API 키 오류</strong><br>
-      <span class="text-xs">${error.message}</span>
+      <span class="text-xs">${errorMessage}</span>
     `;
   }
 }
