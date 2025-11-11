@@ -81,6 +81,10 @@ function updateUIForLoggedIn() {
   document.getElementById('uploadLoginPrompt').classList.add('hidden');
   document.getElementById('uploadForm').classList.remove('hidden');
   
+  // Show documents list
+  document.getElementById('documentsListSection').classList.remove('hidden');
+  loadDocumentsList();
+  
   if (currentUser.role === 'admin') {
     document.getElementById('documentsBtn').classList.remove('hidden');
     document.getElementById('adminPageBtn').classList.remove('hidden');
@@ -402,6 +406,108 @@ async function loadStats() {
   }
 }
 
+async function loadDocumentsList() {
+  if (!authToken) return;
+  
+  const documentsList = document.getElementById('documentsList');
+  
+  try {
+    documentsList.innerHTML = '<div class="text-center text-gray-500 text-sm py-4"><i class="fas fa-spinner fa-spin mr-2"></i>로딩 중...</div>';
+    
+    const response = await axios.get('/api/documents', {
+      headers: {
+        'Authorization': `Bearer ${authToken}`
+      }
+    });
+    
+    const documents = response.data.documents || [];
+    
+    if (documents.length === 0) {
+      documentsList.innerHTML = '<div class="text-center text-gray-400 text-sm py-4">업로드된 문서가 없습니다</div>';
+      return;
+    }
+    
+    // Sort by created_at (newest first)
+    documents.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    documentsList.innerHTML = documents.map(doc => {
+      // Status badge
+      let statusBadge = '';
+      let statusColor = '';
+      let statusIcon = '';
+      
+      if (doc.status === 'indexed') {
+        statusBadge = '완료';
+        statusColor = 'bg-green-100 text-green-800';
+        statusIcon = 'fa-check-circle';
+      } else if (doc.status === 'processing') {
+        statusBadge = '처리중';
+        statusColor = 'bg-yellow-100 text-yellow-800';
+        statusIcon = 'fa-spinner fa-spin';
+      } else if (doc.status === 'failed') {
+        statusBadge = '실패';
+        statusColor = 'bg-red-100 text-red-800';
+        statusIcon = 'fa-exclamation-circle';
+      }
+      
+      // File type icon
+      let fileIcon = 'fa-file';
+      if (doc.file_type.includes('pdf')) {
+        fileIcon = 'fa-file-pdf text-red-600';
+      } else if (doc.file_type.includes('word') || doc.file_type.includes('document')) {
+        fileIcon = 'fa-file-word text-blue-600';
+      } else if (doc.file_type.includes('presentation') || doc.file_type.includes('powerpoint')) {
+        fileIcon = 'fa-file-powerpoint text-orange-600';
+      } else if (doc.file_type.includes('text') || doc.file_type.includes('markdown')) {
+        fileIcon = 'fa-file-alt text-gray-600';
+      }
+      
+      // Format date
+      const date = new Date(doc.created_at);
+      const formattedDate = date.toLocaleString('ko-KR', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      
+      // File size
+      const fileSize = doc.file_size < 1024 * 1024 
+        ? `${Math.round(doc.file_size / 1024)}KB`
+        : `${(doc.file_size / (1024 * 1024)).toFixed(1)}MB`;
+      
+      return `
+        <div class="bg-gray-50 hover:bg-gray-100 rounded-lg p-3 transition-colors border border-gray-200">
+          <div class="flex items-start justify-between">
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center gap-2 mb-1">
+                <i class="fas ${fileIcon}"></i>
+                <span class="text-sm font-medium text-gray-900 truncate" title="${escapeHtml(doc.title)}">
+                  ${escapeHtml(doc.title)}
+                </span>
+              </div>
+              <div class="flex items-center gap-2 text-xs text-gray-500">
+                <span>${escapeHtml(doc.filename)}</span>
+                <span>•</span>
+                <span>${fileSize}</span>
+                <span>•</span>
+                <span>${formattedDate}</span>
+              </div>
+            </div>
+            <span class="ml-2 px-2 py-1 rounded text-xs font-medium ${statusColor} whitespace-nowrap">
+              <i class="fas ${statusIcon} mr-1"></i>${statusBadge}
+            </span>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+  } catch (error) {
+    console.error('Failed to load documents:', error);
+    documentsList.innerHTML = '<div class="text-center text-red-500 text-sm py-4">문서 목록을 불러올 수 없습니다</div>';
+  }
+}
+
 async function showHistory() {
   if (!authToken) {
     showNotification('로그인이 필요합니다', 'error');
@@ -580,9 +686,10 @@ async function handleDocumentUpload() {
     fileInput.value = '';
     titleInput.value = '';
     
-    // Reload stats
+    // Reload stats and documents list
     setTimeout(() => {
       loadStats();
+      loadDocumentsList();
       uploadProgress.classList.add('hidden');
       uploadProgressBar.style.width = '0%';
     }, 3000);

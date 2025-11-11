@@ -232,6 +232,25 @@ app.get('/', (c) => {
                             </div>
                             <div id="uploadResult" class="hidden mt-3 p-3 rounded-lg text-sm"></div>
                         </div>
+                        
+                        <!-- Uploaded Documents List -->
+                        <div class="mt-6 hidden" id="documentsListSection">
+                            <div class="flex justify-between items-center mb-3">
+                                <h4 class="text-sm font-semibold text-gray-700">
+                                    <i class="fas fa-file-alt text-blue-600 mr-2"></i>업로드된 문서
+                                </h4>
+                                <button 
+                                    onclick="loadDocumentsList()" 
+                                    class="text-xs text-blue-600 hover:text-blue-800"
+                                    title="새로고침"
+                                >
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                            <div id="documentsList" class="space-y-2 max-h-96 overflow-y-auto">
+                                <!-- Documents will be loaded here -->
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Stats Card -->
