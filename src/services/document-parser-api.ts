@@ -43,14 +43,27 @@ export class DocumentParserAPI {
       });
 
       console.log('[LlamaParse] Upload response status:', uploadResponse.status);
+      console.log('[LlamaParse] Upload response headers:', Object.fromEntries(uploadResponse.headers.entries()));
 
       if (!uploadResponse.ok) {
-        const error = await uploadResponse.text();
-        console.error('[LlamaParse] Upload failed:', error);
-        throw new Error(`LlamaParse upload failed (${uploadResponse.status}): ${error}`);
+        const errorText = await uploadResponse.text();
+        console.error('[LlamaParse] Upload failed - Status:', uploadResponse.status);
+        console.error('[LlamaParse] Upload failed - Response body:', errorText);
+        
+        // Try to parse error as JSON for better message
+        try {
+          const errorJson = JSON.parse(errorText);
+          console.error('[LlamaParse] Upload failed - Parsed error:', errorJson);
+          const errorMsg = errorJson.detail || errorJson.message || errorJson.error || errorText;
+          throw new Error(`LlamaParse 업로드 실패 (${uploadResponse.status}): ${errorMsg}`);
+        } catch (parseError) {
+          // If not JSON, use raw text
+          throw new Error(`LlamaParse 업로드 실패 (${uploadResponse.status}): ${errorText}`);
+        }
       }
 
       const uploadResult = await uploadResponse.json();
+      console.log('[LlamaParse] Upload result:', uploadResult);
       const jobId = uploadResult.id;
       console.log('[LlamaParse] Job created:', jobId);
 
@@ -72,12 +85,19 @@ export class DocumentParserAPI {
         );
 
         if (!statusResponse.ok) {
-          console.error('[LlamaParse] Status check failed:', statusResponse.status);
-          throw new Error(`Failed to check parsing status (${statusResponse.status})`);
+          const statusErrorText = await statusResponse.text();
+          console.error('[LlamaParse] Status check failed - Status:', statusResponse.status);
+          console.error('[LlamaParse] Status check failed - Response:', statusErrorText);
+          throw new Error(`파싱 상태 확인 실패 (${statusResponse.status}): ${statusErrorText}`);
         }
 
         const statusResult = await statusResponse.json();
-        console.log('[LlamaParse] Status check:', { attempt: attempts + 1, status: statusResult.status });
+        console.log('[LlamaParse] Status check:', { 
+          attempt: attempts + 1, 
+          status: statusResult.status,
+          jobId: jobId,
+          fullResult: statusResult
+        });
         
         if (statusResult.status === 'SUCCESS') {
           console.log('[LlamaParse] Parsing complete, text length:', statusResult.markdown?.length || statusResult.text?.length || 0);
@@ -86,8 +106,10 @@ export class DocumentParserAPI {
             pages: statusResult.total_pages
           };
         } else if (statusResult.status === 'ERROR') {
-          console.error('[LlamaParse] Parsing error:', statusResult.error);
-          throw new Error(statusResult.error || 'Parsing failed');
+          console.error('[LlamaParse] Job failed with ERROR status');
+          console.error('[LlamaParse] Full error result:', statusResult);
+          const errorDetail = statusResult.error || statusResult.message || statusResult.detail || 'Unknown parsing error';
+          throw new Error(`LlamaParse 파싱 오류: ${errorDetail}`);
         }
         
         attempts++;
