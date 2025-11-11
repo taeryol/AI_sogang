@@ -111,7 +111,9 @@ documents.post('/upload', verifyAuth, async (c) => {
     console.log('[Documents] Parsing config:', {
       hasKey: !!llamaParseKey,
       keyLength: llamaParseKey?.length,
-      keyPrefix: llamaParseKey?.substring(0, 4),
+      keyPrefix: llamaParseKey?.substring(0, 7),
+      keySuffix: llamaParseKey?.substring(llamaParseKey.length - 4),
+      rawKeyFromDB: llamaParseKeyResult?.setting_value ? `[${llamaParseKeyResult.setting_value.length} chars]` : 'null',
       filename,
       fileType
     });
@@ -127,7 +129,12 @@ documents.post('/upload', verifyAuth, async (c) => {
 
     if (needsParsingAPI && !llamaParseKey) {
       return c.json({ 
-        error: '문서 파싱 API가 설정되지 않았습니다. 관리자 페이지에서 LlamaParse API 키를 설정해주세요.' 
+        error: '문서 파싱 API가 설정되지 않았습니다. 관리자 페이지에서 LlamaParse API 키를 설정해주세요.',
+        debug: {
+          dbQueryResult: !!llamaParseKeyResult,
+          rawValue: llamaParseKeyResult?.setting_value ? 'exists' : 'null',
+          afterTrim: llamaParseKey || 'empty'
+        }
       }, 400);
     }
 
@@ -144,10 +151,23 @@ documents.post('/upload', verifyAuth, async (c) => {
     } catch (error) {
       console.error('[Documents] Error extracting text:', error);
       console.error('[Documents] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+      console.error('[Documents] API key info:', {
+        hasKey: !!llamaParseKey,
+        keyLength: llamaParseKey?.length,
+        keyPrefix: llamaParseKey?.substring(0, 7),
+        keySuffix: llamaParseKey?.substring(llamaParseKey?.length - 4)
+      });
+      
       const errorMessage = error instanceof Error ? error.message : 'Failed to extract text from file';
       return c.json({ 
         error: errorMessage,
-        details: error instanceof Error ? error.stack : undefined
+        details: error instanceof Error ? error.stack : undefined,
+        debug: {
+          hasApiKey: !!llamaParseKey,
+          apiKeyLength: llamaParseKey?.length || 0,
+          apiKeyPrefix: llamaParseKey?.substring(0, 7) || 'none',
+          apiKeySuffix: llamaParseKey?.substring(llamaParseKey?.length - 4) || 'none'
+        }
       }, 400);
     }
 
