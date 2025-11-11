@@ -643,9 +643,16 @@ async function loadAPISettings() {
           <form onsubmit="saveOpenAISettings(event)" class="space-y-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
-              <input type="password" id="openai_api_key" value="${settingsMap.openai_api_key || ''}" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="sk-...">
+              <div class="flex gap-2">
+                <input type="password" id="openai_api_key" value="${settingsMap.openai_api_key || ''}" 
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  placeholder="sk-...">
+                <button type="button" onclick="testOpenAIKey()" 
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium whitespace-nowrap">
+                  <i class="fas fa-check-circle mr-1"></i>테스트
+                </button>
+              </div>
+              <div id="openai_test_result" class="mt-2 hidden"></div>
               <p class="mt-1 text-xs text-gray-500">OpenAI API 키를 입력하세요. 비밀번호로 암호화되어 저장됩니다.</p>
             </div>
             <div>
@@ -818,6 +825,51 @@ async function testLlamaParseKey() {
     }
   } catch (error) {
     console.error('[Admin] LlamaParse test error:', error);
+    const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
+    resultDiv.className = 'mt-2 p-2 rounded bg-red-50 text-red-800 text-xs';
+    resultDiv.innerHTML = `
+      <i class="fas fa-times-circle mr-1"></i>
+      <strong>API 키 오류</strong><br>
+      <span class="text-xs">${errorMessage}</span>
+    `;
+  }
+}
+
+async function testOpenAIKey() {
+  const apiKey = document.getElementById('openai_api_key').value.trim();
+  const resultDiv = document.getElementById('openai_test_result');
+  
+  if (!apiKey) {
+    resultDiv.className = 'mt-2 p-2 rounded bg-yellow-50 text-yellow-800 text-xs';
+    resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>API 키를 입력해주세요.';
+    resultDiv.classList.remove('hidden');
+    return;
+  }
+  
+  // Show loading
+  resultDiv.className = 'mt-2 p-2 rounded bg-blue-50 text-blue-800 text-xs';
+  resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 검증 중...';
+  resultDiv.classList.remove('hidden');
+  
+  try {
+    // Call backend proxy to test API key
+    const response = await axios.post('/api/admin/test-openai', 
+      { apiKey },
+      { headers: { 'Authorization': `Bearer ${authToken}` } }
+    );
+    
+    if (response.data.success) {
+      resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs';
+      resultDiv.innerHTML = `
+        <i class="fas fa-check-circle mr-1"></i>
+        <strong>API 키 정상 작동!</strong><br>
+        <span class="text-xs">모델: ${response.data.model || 'gpt-3.5-turbo'}</span>
+      `;
+    } else {
+      throw new Error(response.data.error || 'API test failed');
+    }
+  } catch (error) {
+    console.error('[Admin] OpenAI test error:', error);
     const errorMessage = error.response?.data?.error || error.message || 'Unknown error';
     resultDiv.className = 'mt-2 p-2 rounded bg-red-50 text-red-800 text-xs';
     resultDiv.innerHTML = `

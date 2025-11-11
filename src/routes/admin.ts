@@ -301,6 +301,69 @@ admin.post('/generate-code', verifyAuth, requireAdmin, async (c) => {
 });
 
 /**
+ * POST /api/admin/test-openai
+ * Test OpenAI API key (admin only)
+ */
+admin.post('/test-openai', verifyAuth, requireAdmin, async (c) => {
+  try {
+    const body = await c.req.json();
+    const apiKey = body.apiKey?.trim();
+
+    if (!apiKey) {
+      return c.json({ error: 'API key is required' }, 400);
+    }
+
+    console.log('[Admin] Testing OpenAI API key:', apiKey.substring(0, 7) + '...');
+
+    // Test with a simple completion request
+    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          { role: 'user', content: 'Say "API key test successful"' }
+        ],
+        max_tokens: 10
+      })
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('[Admin] OpenAI API test failed:', errorData);
+      
+      let errorMessage = 'API key is invalid';
+      if (errorData.error?.message) {
+        errorMessage = errorData.error.message;
+      }
+      
+      return c.json({ 
+        success: false,
+        error: errorMessage
+      }, 400);
+    }
+
+    const result = await response.json();
+    console.log('[Admin] OpenAI API test successful');
+
+    return c.json({ 
+      success: true,
+      model: result.model || 'gpt-3.5-turbo',
+      message: 'API key is valid and working!'
+    });
+  } catch (error) {
+    console.error('[Admin] OpenAI test error:', error);
+    return c.json({ 
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }, 500);
+  }
+});
+
+/**
  * POST /api/admin/test-llamaparse
  * Test LlamaParse API key (admin only)
  */
