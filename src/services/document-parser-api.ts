@@ -16,18 +16,22 @@ export class DocumentParserAPI {
   static async parseWithLlamaParse(
     file: ArrayBuffer,
     filename: string,
-    apiKey: string
+    apiKey: string,
+    mimeType?: string
   ): Promise<ParseResult> {
     try {
       console.log('[LlamaParse] Starting upload:', {
         filename,
         fileSize: file.byteLength,
+        mimeType,
         keyPrefix: apiKey.substring(0, 4)
       });
       
       // Step 1: Upload document
       const formData = new FormData();
-      formData.append('file', new Blob([file]), filename);
+      // Create blob with proper MIME type
+      const blob = mimeType ? new Blob([file], { type: mimeType }) : new Blob([file]);
+      formData.append('file', blob, filename);
 
       const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
         method: 'POST',
@@ -119,7 +123,7 @@ export class DocumentParserAPI {
         fileType,
         fileSize: file.byteLength
       });
-      const result = await this.parseWithLlamaParse(file, filename, config.llamaParseKey);
+      const result = await this.parseWithLlamaParse(file, filename, config.llamaParseKey, fileType);
       
       if (result.text && !result.error) {
         console.log('[DocumentParser] LlamaParse successful, text length:', result.text.length);
