@@ -36,9 +36,9 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 ## URLs
 
 ### 프로덕션 환경
-- **애플리케이션**: https://3ed33909.webapp-31i.pages.dev (최신)
+- **애플리케이션**: https://6e07fef9.webapp-31i.pages.dev (최신)
 - **프로젝트 도메인**: https://webapp-31i.pages.dev
-- **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널, 메인 화면 문서 업로드, Q&A 기능 모두 작동)
+- **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널, 메인 화면 문서 업로드 [TXT/MD], Q&A 기능 모두 작동)
 
 ### 개발 환경
 - **애플리케이션**: https://3000-i94tzifo3xt1qmlk5p5bs-cc2fbc16.sandbox.novita.ai
@@ -98,13 +98,14 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
    - ✅ 로컬 스토리지 세션 유지
 
 2. **문서 업로드 및 처리**
-   - ✅ TXT, PDF, DOCX 파일 지원
+   - ✅ TXT, Markdown 파일 지원 (PDF/DOCX는 Cloudflare Workers 제약으로 미지원)
    - ✅ D1 데이터베이스에 직접 저장 (R2 불필요)
-   - ✅ 자동 텍스트 추출 및 청킹
+   - ✅ 자동 텍스트 추출 및 청킹 (1000자 단위, 200자 오버랩)
    - ✅ **메인 화면 문서 업로드**: 채팅 창 옆 사이드바에서 바로 문서 업로드 가능
    - ✅ 실시간 업로드 진행률 표시
    - ✅ 업로드 성공/실패 알림
    - ✅ 파일 크기 제한: 10MB
+   - 📝 PDF/DOCX 변환 가이드 제공
 
 3. **벡터 임베딩 생성**
    - OpenAI text-embedding-3-small 모델 사용
@@ -130,9 +131,10 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 ### 🚧 미구현/개선 예정 기능
 
 1. **고급 문서 처리**
-   - ✅ PDF 기본 지원 (텍스트 추출)
-   - ✅ DOCX 기본 지원 (텍스트 추출)
-   - 🚧 이미지 OCR (향후 추가 예정)
+   - ✅ TXT, Markdown 지원
+   - 🚧 PDF 직접 지원 (외부 API 통합 필요)
+   - 🚧 DOCX 직접 지원 (외부 API 통합 필요)
+   - 🚧 이미지 OCR (Tesseract.js, Cloud Vision API)
    - 🚧 표와 이미지가 포함된 복잡한 문서 처리
 
 2. **프로덕션 벡터 DB**
@@ -242,10 +244,12 @@ pm2 logs webapp --nostream
 #### 방법 1: 메인 화면에서 바로 업로드 (권장)
 1. 로그인 (일반 사용자 또는 관리자)
 2. 메인 화면 오른쪽 사이드바의 "문서 업로드" 섹션
-3. "파일 선택" 버튼으로 TXT, PDF, DOCX 파일 선택
+3. "파일 선택" 버튼으로 **TXT 또는 Markdown(.md)** 파일 선택
 4. 제목 입력 (선택사항, 비워두면 파일명 사용)
 5. "업로드" 버튼 클릭
 6. 업로드 진행률 확인 후 완료!
+
+**⚠️ 중요**: 현재 TXT와 Markdown 파일만 지원됩니다. PDF/DOCX는 텍스트 파일로 변환 후 업로드해주세요.
 
 #### 방법 2: 관리자 페이지에서 업로드
 1. 관리자 계정으로 로그인
@@ -382,10 +386,16 @@ webapp/
 ## 문제 해결
 
 ### 문서 업로드 실패
-- 파일 크기 제한: 10MB
-- 지원 형식: TXT, PDF, DOCX
-- 파일에서 텍스트를 추출할 수 없는 경우 업로드 실패
-- 빈 파일 또는 텍스트가 없는 파일은 업로드 불가
+- **파일 크기 제한**: 10MB
+- **지원 형식**: TXT, Markdown (.md, .markdown)
+- **PDF/DOCX 파일**: Cloudflare Workers 환경 제약으로 미지원
+  - 해결 방법: PDF/DOCX → TXT 변환 후 업로드
+  - 온라인 도구: https://pdftotext.com
+  - 또는 파일 내용을 복사하여 .txt 파일로 저장
+- **빈 파일**: 텍스트가 없는 파일은 업로드 불가
+- **인코딩 문제**: UTF-8 인코딩 권장
+
+자세한 내용은 [DOCUMENT_UPLOAD_PROCESS.md](./DOCUMENT_UPLOAD_PROCESS.md) 참조
 
 ### OpenAI API 오류
 - API 키 확인: `.dev.vars` 파일
