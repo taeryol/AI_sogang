@@ -37,9 +37,9 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 ## URLs
 
 ### 프로덕션 환경
-- **애플리케이션**: https://a85a98fe.webapp-31i.pages.dev (최신)
+- **애플리케이션**: https://f220ddef.webapp-31i.pages.dev (최신)
 - **프로젝트 도메인**: https://webapp-31i.pages.dev
-- **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널, 모든 관리 기능 작동)
+- **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널, Q&A 기능 모두 작동)
 
 ### 개발 환경
 - **애플리케이션**: https://3000-i94tzifo3xt1qmlk5p5bs-cc2fbc16.sandbox.novita.ai
