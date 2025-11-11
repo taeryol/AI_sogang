@@ -86,6 +86,37 @@ export class DocumentProcessor {
   }
 
   /**
+   * Extract text from PDF files
+   * Note: Cloudflare Workers doesn't support Node.js libraries like pdf-parse
+   * For production, integrate with external PDF parsing API
+   */
+  static async extractTextFromPDF(file: ArrayBuffer): Promise<string> {
+    throw new Error(
+      'PDF 파일은 현재 지원되지 않습니다.\n\n' +
+      '📝 해결 방법:\n' +
+      '1. PDF를 텍스트 파일(.txt)로 변환하여 업로드\n' +
+      '2. PDF 내용을 복사하여 .txt 파일로 저장 후 업로드\n' +
+      '3. 온라인 변환 도구 사용: https://pdftotext.com\n\n' +
+      '💡 향후 업데이트에서 PDF 직접 지원 예정입니다.'
+    );
+  }
+
+  /**
+   * Extract text from DOCX files
+   * Note: DOCX parsing requires external service in Cloudflare Workers
+   */
+  static async extractTextFromDOCX(file: ArrayBuffer): Promise<string> {
+    throw new Error(
+      'DOCX 파일은 현재 지원되지 않습니다.\n\n' +
+      '📝 해결 방법:\n' +
+      '1. Word 문서를 텍스트 파일(.txt)로 저장\n' +
+      '2. 파일 → 다른 이름으로 저장 → 파일 형식: 텍스트 파일\n' +
+      '3. 저장된 .txt 파일을 업로드\n\n' +
+      '💡 향후 업데이트에서 DOCX 직접 지원 예정입니다.'
+    );
+  }
+
+  /**
    * Detect file type from filename
    */
   static getFileType(filename: string): string {
@@ -109,27 +140,28 @@ export class DocumentProcessor {
 
   /**
    * Extract text based on file type
-   * Note: PDF and DOCX parsing requires external services in Cloudflare Workers
    */
   static async extractText(file: ArrayBuffer, fileType: string): Promise<string> {
-    switch (fileType) {
-      case 'text/plain':
-        return await this.extractTextFromTXT(file);
-      
-      case 'text/markdown':
-        return await this.extractTextFromMarkdown(file);
-      
-      case 'application/pdf':
-      case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
-        // For PDF and DOCX, we need external parsing services
-        // In production, use services like:
-        // - Adobe PDF Extract API
-        // - Docparser
-        // - Or upload to a parsing service
-        throw new Error(`File type ${fileType} requires external parsing service. Please use TXT or MD files for now.`);
-      
-      default:
-        throw new Error(`Unsupported file type: ${fileType}`);
+    try {
+      switch (fileType) {
+        case 'text/plain':
+          return await this.extractTextFromTXT(file);
+        
+        case 'text/markdown':
+          return await this.extractTextFromMarkdown(file);
+        
+        case 'application/pdf':
+          return await this.extractTextFromPDF(file);
+        
+        case 'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+          return await this.extractTextFromDOCX(file);
+        
+        default:
+          throw new Error(`Unsupported file type: ${fileType}`);
+      }
+    } catch (error) {
+      console.error('Text extraction error:', error);
+      throw error;
     }
   }
 

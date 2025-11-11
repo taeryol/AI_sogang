@@ -484,10 +484,10 @@ async function handleDocumentUpload() {
   const title = titleInput.value.trim() || file.name;
   
   // Validate file type
-  const validExtensions = ['.pdf', '.txt', '.docx'];
+  const validExtensions = ['.txt', '.md', '.markdown'];
   const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
   if (!validExtensions.includes(fileExtension)) {
-    showNotification('지원하지 않는 파일 형식입니다. PDF, TXT, DOCX 파일만 업로드 가능합니다.', 'error');
+    showNotification('현재 TXT와 Markdown 파일만 지원됩니다.\n\nPDF/DOCX 파일은 텍스트 파일로 변환 후 업로드해주세요.', 'error');
     return;
   }
   
