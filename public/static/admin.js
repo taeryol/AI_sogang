@@ -74,7 +74,7 @@ function renderApp() {
           </div>
           <div class="flex items-center space-x-4">
             <span class="text-gray-700"><i class="fas fa-user-shield mr-2"></i>${currentUser.name}</span>
-            <a href="/" class="text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-home mr-2"></i>메인으로</a>
+            <a href="/" class="text-primary-600 hover:text-primary-800 font-medium"><i class="fas fa-home mr-2"></i>메인으로</a>
             <button onclick="handleLogout()" class="text-red-600 hover:text-red-800 font-medium"><i class="fas fa-sign-out-alt mr-2"></i>로그아웃</button>
           </div>
         </div>
@@ -206,13 +206,13 @@ async function loadDashboard() {
         
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-          <div class="bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg shadow p-6 text-white">
+          <div class="bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg shadow p-6 text-white">
             <div class="flex items-center justify-between">
               <div>
-                <p class="text-blue-100 text-sm font-medium">전체 사용자</p>
+                <p class="text-primary-100 text-sm font-medium">전체 사용자</p>
                 <p class="text-3xl font-bold mt-2">${stats.total_users || 0}</p>
               </div>
-              <i class="fas fa-users text-4xl text-blue-200"></i>
+              <i class="fas fa-users text-4xl text-primary-200"></i>
             </div>
           </div>
           
@@ -349,7 +349,7 @@ async function loadUsers() {
                   <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(user.created_at)}</td>
                   <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     ${user.id !== currentUser.id ? `
-                      <button onclick="toggleUserRole(${user.id}, '${user.role}')" class="text-blue-600 hover:text-blue-900 mr-3">
+                      <button onclick="toggleUserRole(${user.id}, '${user.role}')" class="text-primary-600 hover:text-primary-900 mr-3">
                         <i class="fas fa-exchange-alt mr-1"></i>역할 변경
                       </button>
                       <button onclick="deleteUser(${user.id}, '${escapeHtml(user.name)}')" class="text-red-600 hover:text-red-900">
@@ -365,13 +365,13 @@ async function loadUsers() {
           </table>
         </div>
         
-        <div class="mt-6 bg-blue-50 border-l-4 border-blue-400 p-4">
+        <div class="mt-6 bg-primary-50 border-l-4 border-primary-400 p-4">
           <div class="flex">
             <div class="flex-shrink-0">
-              <i class="fas fa-info-circle text-blue-400"></i>
+              <i class="fas fa-info-circle text-primary-400"></i>
             </div>
             <div class="ml-3">
-              <p class="text-sm text-blue-700">
+              <p class="text-sm text-primary-700">
                 새 관리자를 추가하려면 관리자 코드 <strong>ADMIN-SETUP-2025</strong>를 사용하여 회원가입하세요.
               </p>
             </div>
@@ -638,7 +638,7 @@ async function loadAPISettings() {
         <!-- OpenAI Settings -->
         <div class="bg-white rounded-lg border border-gray-200 p-6 mb-6">
           <h3 class="text-lg font-semibold text-gray-900 mb-4">
-            <i class="fas fa-robot text-blue-500 mr-2"></i>OpenAI 설정
+            <i class="fas fa-robot text-primary-500 mr-2"></i>OpenAI 설정
           </h3>
           <form onsubmit="saveOpenAISettings(event)" class="space-y-4">
             <div>
@@ -651,7 +651,7 @@ async function loadAPISettings() {
                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="sk-...">
                 <button type="button" onclick="testOpenAIKey()" 
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium whitespace-nowrap">
+                  class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium whitespace-nowrap">
                   <i class="fas fa-check-circle mr-1"></i>테스트
                 </button>
               </div>
@@ -686,8 +686,8 @@ async function loadAPISettings() {
             <i class="fas fa-file-pdf text-red-500 mr-2"></i>문서 파싱 API 설정
           </h3>
           <form onsubmit="saveParsingAPISettings(event)" class="space-y-4">
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-              <p class="text-sm text-blue-800">
+            <div class="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-4">
+              <p class="text-sm text-primary-800">
                 <i class="fas fa-info-circle mr-2"></i>
                 PDF, DOCX, PPTX 파일을 업로드하려면 파싱 API 키가 필요합니다.
               </p>
@@ -702,7 +702,7 @@ async function loadAPISettings() {
                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
                   placeholder="llx-...">
                 <button type="button" onclick="testLlamaParseKey()" 
-                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium whitespace-nowrap">
+                  class="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 font-medium whitespace-nowrap">
                   <i class="fas fa-check-circle mr-1"></i>테스트
                 </button>
               </div>
@@ -711,7 +711,7 @@ async function loadAPISettings() {
                 <strong>무료:</strong> 1000 페이지/일 | 
                 <strong>지원:</strong> PDF, DOCX, PPTX, HTML
               </p>
-              <a href="https://cloud.llamaindex.ai" target="_blank" class="text-xs text-blue-600 hover:underline">
+              <a href="https://cloud.llamaindex.ai" target="_blank" class="text-xs text-primary-600 hover:underline">
                 <i class="fas fa-external-link-alt mr-1"></i>API 키 발급받기
               </a>
             </div>
@@ -833,7 +833,7 @@ async function testLlamaParseKey() {
   }
   
   // Show loading
-  resultDiv.className = 'mt-2 p-2 rounded bg-blue-50 text-blue-800 text-xs';
+  resultDiv.className = 'mt-2 p-2 rounded bg-primary-50 text-primary-800 text-xs';
   resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 검증 중...';
   resultDiv.classList.remove('hidden');
   
@@ -878,7 +878,7 @@ async function testOpenAIKey() {
   }
   
   // Show loading
-  resultDiv.className = 'mt-2 p-2 rounded bg-blue-50 text-blue-800 text-xs';
+  resultDiv.className = 'mt-2 p-2 rounded bg-primary-50 text-primary-800 text-xs';
   resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 검증 중...';
   resultDiv.classList.remove('hidden');
   
@@ -1034,7 +1034,7 @@ async function loadAuditLog() {
                   <tr>
                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${formatDate(log.created_at)}</td>
                     <td class="px-6 py-4 whitespace-nowrap">
-                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                      <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-primary-100 text-primary-800">
                         ${getActionText(log.action)}
                       </span>
                     </td>
@@ -1080,7 +1080,7 @@ function showNotification(message, type = 'success') {
   } else if (type === 'error') {
     icon.classList.add('fa-exclamation-circle', 'text-red-500');
   } else {
-    icon.classList.add('fa-info-circle', 'text-blue-500');
+    icon.classList.add('fa-info-circle', 'text-primary-500');
   }
   
   notification.classList.remove('hidden');
