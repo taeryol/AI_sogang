@@ -100,9 +100,40 @@ export class DocumentParserAPI {
         });
         
         if (statusResult.status === 'SUCCESS') {
-          console.log('[LlamaParse] Parsing complete, text length:', statusResult.markdown?.length || statusResult.text?.length || 0);
+          console.log('[LlamaParse] Parsing complete!');
+          console.log('[LlamaParse] Full result structure:', {
+            hasMarkdown: 'markdown' in statusResult,
+            hasText: 'text' in statusResult,
+            markdownType: typeof statusResult.markdown,
+            textType: typeof statusResult.text,
+            markdownLength: statusResult.markdown?.length || 0,
+            textLength: statusResult.text?.length || 0,
+            allKeys: Object.keys(statusResult)
+          });
+          
+          // Extract text from result - try multiple fields
+          let extractedText = '';
+          
+          if (statusResult.markdown && statusResult.markdown.trim().length > 0) {
+            extractedText = statusResult.markdown;
+            console.log('[LlamaParse] Using markdown field, length:', extractedText.length);
+          } else if (statusResult.text && statusResult.text.trim().length > 0) {
+            extractedText = statusResult.text;
+            console.log('[LlamaParse] Using text field, length:', extractedText.length);
+          } else if (statusResult.result && typeof statusResult.result === 'string') {
+            extractedText = statusResult.result;
+            console.log('[LlamaParse] Using result field, length:', extractedText.length);
+          } else if (statusResult.content && typeof statusResult.content === 'string') {
+            extractedText = statusResult.content;
+            console.log('[LlamaParse] Using content field, length:', extractedText.length);
+          } else {
+            console.error('[LlamaParse] No text found in any expected field!');
+            console.error('[LlamaParse] Available fields:', Object.keys(statusResult));
+            console.error('[LlamaParse] Full result:', JSON.stringify(statusResult, null, 2));
+          }
+          
           return {
-            text: statusResult.markdown || statusResult.text || '',
+            text: extractedText,
             pages: statusResult.total_pages
           };
         } else if (statusResult.status === 'ERROR') {
