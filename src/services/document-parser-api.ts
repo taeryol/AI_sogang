@@ -110,47 +110,44 @@ export class DocumentParserAPI {
         });
         
         if (statusResult.status === 'SUCCESS') {
-          console.log('[LlamaParse] Parsing complete!');
-          console.log('[LlamaParse] Full result structure:', {
-            hasMarkdown: 'markdown' in statusResult,
-            hasText: 'text' in statusResult,
-            markdownType: typeof statusResult.markdown,
-            textType: typeof statusResult.text,
-            markdownLength: statusResult.markdown?.length || 0,
-            textLength: statusResult.text?.length || 0,
-            allKeys: Object.keys(statusResult)
-          });
+          console.log('[LlamaParse] Parsing complete! Now fetching result...');
           
-          // Extract text from result - try multiple fields
-          let extractedText = '';
+          // Step 3: Fetch the actual result using the correct endpoint
+          const resultResponse = await fetch(
+            `https://api.cloud.llamaindex.ai/api/v1/parsing/job/${jobId}/result/markdown`,
+            {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Accept': 'application/json',
+                'Content-Type': 'multipart/form-data'
+              }
+            }
+          );
           
-          if (statusResult.markdown && statusResult.markdown.trim().length > 0) {
-            extractedText = statusResult.markdown;
-            console.log('[LlamaParse] ✅ Using markdown field, length:', extractedText.length);
-          } else if (statusResult.text && statusResult.text.trim().length > 0) {
-            extractedText = statusResult.text;
-            console.log('[LlamaParse] ✅ Using text field, length:', extractedText.length);
-          } else if (statusResult.result && typeof statusResult.result === 'string') {
-            extractedText = statusResult.result;
-            console.log('[LlamaParse] ✅ Using result field, length:', extractedText.length);
-          } else if (statusResult.content && typeof statusResult.content === 'string') {
-            extractedText = statusResult.content;
-            console.log('[LlamaParse] ✅ Using content field, length:', extractedText.length);
-          } else {
-            console.error('[LlamaParse] ❌ No text found in any expected field!');
-            console.error('[LlamaParse] Available fields:', Object.keys(statusResult));
-            console.error('[LlamaParse] Markdown value:', statusResult.markdown);
-            console.error('[LlamaParse] Text value:', statusResult.text);
-            console.error('[LlamaParse] Full result (stringified):', JSON.stringify(statusResult, null, 2).substring(0, 1000));
+          if (!resultResponse.ok) {
+            const resultError = await resultResponse.text();
+            console.error('[LlamaParse] Failed to fetch result:', resultError);
+            throw new Error(`결과 가져오기 실패 (${resultResponse.status}): ${resultError}`);
           }
           
-          console.log('[LlamaParse] Final extracted text length:', extractedText.length);
-          console.log('[LlamaParse] Final extracted text preview:', extractedText.substring(0, 200));
+          const resultData = await resultResponse.json();
+          console.log('[LlamaParse] Result fetched successfully');
+          console.log('[LlamaParse] Result structure:', {
+            hasMarkdown: 'markdown' in resultData,
+            hasText: 'text' in resultData,
+            hasJobMetadata: 'job_metadata' in resultData,
+            markdownLength: resultData.markdown?.length || 0,
+            textLength: resultData.text?.length || 0
+          });
+          
+          const extractedText = resultData.markdown || resultData.text || '';
+          console.log('[LlamaParse] Final text length:', extractedText.length);
+          console.log('[LlamaParse] Text preview:', extractedText.substring(0, 200));
           
           return {
             text: extractedText,
-            pages: statusResult.total_pages,
-            error: extractedText.length === 0 ? 'LlamaParse returned empty text' : undefined
+            pages: resultData.job_metadata?.job_pages || statusResult.total_pages
           };
         } else if (statusResult.status === 'ERROR') {
           console.error('[LlamaParse] Job failed with ERROR status');
