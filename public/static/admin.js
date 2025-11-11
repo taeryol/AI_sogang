@@ -687,9 +687,16 @@ async function loadAPISettings() {
                 LlamaParse API Key
                 <span class="text-xs text-green-600 ml-2">(필수)</span>
               </label>
-              <input type="password" id="llamaparse_api_key" value="${settingsMap.llamaparse_api_key || ''}" 
-                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
-                placeholder="llx-...">
+              <div class="flex gap-2">
+                <input type="password" id="llamaparse_api_key" value="${settingsMap.llamaparse_api_key || ''}" 
+                  class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500"
+                  placeholder="llx-...">
+                <button type="button" onclick="testLlamaParseKey()" 
+                  class="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 font-medium whitespace-nowrap">
+                  <i class="fas fa-check-circle mr-1"></i>테스트
+                </button>
+              </div>
+              <div id="llamaparse_test_result" class="mt-2 hidden"></div>
               <p class="mt-1 text-xs text-gray-500">
                 <strong>무료:</strong> 1000 페이지/일 | 
                 <strong>지원:</strong> PDF, DOCX, PPTX, HTML
@@ -773,6 +780,103 @@ function togglePineconeSettings() {
     pineconeSettings.classList.remove('hidden');
   } else {
     pineconeSettings.classList.add('hidden');
+  }
+}
+
+async function testLlamaParseKey() {
+  const apiKey = document.getElementById('llamaparse_api_key').value.trim();
+  const resultDiv = document.getElementById('llamaparse_test_result');
+  
+  if (!apiKey) {
+    resultDiv.className = 'mt-2 p-2 rounded bg-yellow-50 text-yellow-800 text-xs';
+    resultDiv.innerHTML = '<i class="fas fa-exclamation-triangle mr-1"></i>API 키를 입력해주세요.';
+    resultDiv.classList.remove('hidden');
+    return;
+  }
+  
+  // Show loading
+  resultDiv.className = 'mt-2 p-2 rounded bg-blue-50 text-blue-800 text-xs';
+  resultDiv.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i>API 키 검증 중...';
+  resultDiv.classList.remove('hidden');
+  
+  try {
+    // Create a test file (empty text file)
+    const testContent = 'LlamaParse API Test';
+    const blob = new Blob([testContent], { type: 'text/plain' });
+    const formData = new FormData();
+    formData.append('file', blob, 'test.txt');
+    
+    // Step 1: Upload test file
+    const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
+      },
+      body: formData
+    });
+    
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text();
+      throw new Error(`Upload failed (${uploadResponse.status}): ${errorText}`);
+    }
+    
+    const uploadResult = await uploadResponse.json();
+    const jobId = uploadResult.id;
+    
+    // Step 2: Check job status (wait max 10 seconds)
+    let attempts = 0;
+    const maxAttempts = 5;
+    
+    while (attempts < maxAttempts) {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      const statusResponse = await fetch(
+        `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json'
+          }
+        }
+      );
+      
+      if (!statusResponse.ok) {
+        throw new Error(`Status check failed (${statusResponse.status})`);
+      }
+      
+      const statusResult = await statusResponse.json();
+      
+      if (statusResult.status === 'SUCCESS') {
+        resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs';
+        resultDiv.innerHTML = `
+          <i class="fas fa-check-circle mr-1"></i>
+          <strong>API 키 정상 작동!</strong><br>
+          <span class="text-xs">Job ID: ${jobId}</span>
+        `;
+        return;
+      } else if (statusResult.status === 'ERROR') {
+        throw new Error(statusResult.error || 'Parsing failed');
+      }
+      
+      attempts++;
+    }
+    
+    // Timeout but job was created successfully
+    resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs';
+    resultDiv.innerHTML = `
+      <i class="fas fa-check-circle mr-1"></i>
+      <strong>API 키 정상 작동!</strong> (Job 생성 성공)<br>
+      <span class="text-xs">Job ID: ${jobId}</span>
+    `;
+  } catch (error) {
+    console.error('[Admin] LlamaParse test error:', error);
+    resultDiv.className = 'mt-2 p-2 rounded bg-red-50 text-red-800 text-xs';
+    resultDiv.innerHTML = `
+      <i class="fas fa-times-circle mr-1"></i>
+      <strong>API 키 오류</strong><br>
+      <span class="text-xs">${error.message}</span>
+    `;
   }
 }
 

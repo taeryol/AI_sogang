@@ -114,18 +114,24 @@ export class DocumentParserAPI {
   ): Promise<ParseResult> {
     // Try LlamaParse (supports all formats)
     if (config.llamaParseKey) {
-      console.log('Attempting to parse with LlamaParse...');
+      console.log('[DocumentParser] Attempting to parse with LlamaParse:', {
+        filename,
+        fileType,
+        fileSize: file.byteLength
+      });
       const result = await this.parseWithLlamaParse(file, filename, config.llamaParseKey);
       
       if (result.text && !result.error) {
-        console.log('LlamaParse successful');
+        console.log('[DocumentParser] LlamaParse successful, text length:', result.text.length);
         return result;
       }
       
-      console.log('LlamaParse failed:', result.error);
+      console.log('[DocumentParser] LlamaParse failed:', result.error);
+      // Return the error from LlamaParse instead of generic error
+      return result;
     }
 
-    // No API available or parsing failed
+    // No API available
     return {
       text: '',
       error: this.getNoAPIError(fileType, config)
