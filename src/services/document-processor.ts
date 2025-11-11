@@ -162,8 +162,8 @@ export class DocumentProcessor {
         case 'application/vnd.openxmlformats-officedocument.presentationml.presentation':
         case 'application/vnd.ms-powerpoint':
           // Use external API for complex documents
-          if (!config) {
-            throw new Error('파싱 API 설정이 필요합니다.');
+          if (!config || !config.llamaParseKey) {
+            throw new Error('문서 파싱 API가 설정되지 않았습니다. 관리자 페이지에서 LlamaParse API 키를 설정해주세요.');
           }
           return await this.extractTextFromDocument(file, filename, fileType, config);
         

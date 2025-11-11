@@ -116,6 +116,21 @@ documents.post('/upload', verifyAuth, async (c) => {
       fileType
     });
     
+    // Check if API key is required for this file type
+    const needsParsingAPI = [
+      'application/pdf',
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'application/msword',
+      'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      'application/vnd.ms-powerpoint'
+    ].includes(fileType);
+
+    if (needsParsingAPI && !llamaParseKey) {
+      return c.json({ 
+        error: '문서 파싱 API가 설정되지 않았습니다. 관리자 페이지에서 LlamaParse API 키를 설정해주세요.' 
+      }, 400);
+    }
+
     const parsingConfig = {
       llamaParseKey
     };
