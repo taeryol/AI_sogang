@@ -642,7 +642,10 @@ async function loadAPISettings() {
           </h3>
           <form onsubmit="saveOpenAISettings(event)" class="space-y-4">
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
+              <label class="block text-sm font-medium text-gray-700 mb-2">
+                API Key
+                ${settingsMap.openai_api_key ? '<span class="ml-2 text-xs text-green-600"><i class="fas fa-check-circle"></i> 저장됨</span>' : '<span class="ml-2 text-xs text-gray-400"><i class="fas fa-times-circle"></i> 미설정</span>'}
+              </label>
               <div class="flex gap-2">
                 <input type="password" id="openai_api_key" value="${settingsMap.openai_api_key || ''}" 
                   class="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
@@ -692,7 +695,7 @@ async function loadAPISettings() {
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">
                 LlamaParse API Key
-                <span class="text-xs text-green-600 ml-2">(필수)</span>
+                ${settingsMap.llamaparse_api_key ? '<span class="ml-2 text-xs text-green-600"><i class="fas fa-check-circle"></i> 저장됨</span>' : '<span class="ml-2 text-xs text-red-600"><i class="fas fa-exclamation-circle"></i> 필수</span>'}
               </label>
               <div class="flex gap-2">
                 <input type="password" id="llamaparse_api_key" value="${settingsMap.llamaparse_api_key || ''}" 
@@ -774,10 +777,38 @@ async function loadAPISettings() {
     
     // Initial state for Pinecone settings
     togglePineconeSettings();
+    
+    // Auto-check API keys if they exist (show persistent status)
+    if (settingsMap.openai_api_key) {
+      showAPIKeyStatus('openai_test_result', true, '저장된 API 키 사용 중');
+    }
+    if (settingsMap.llamaparse_api_key) {
+      showAPIKeyStatus('llamaparse_test_result', true, '저장된 API 키 사용 중');
+    }
   } catch (error) {
     console.error('[Admin] Failed to load settings:', error);
     showError('API 설정 로드 실패: ' + (error.response?.data?.error || error.message));
   }
+}
+
+function showAPIKeyStatus(elementId, isValid, message) {
+  const resultDiv = document.getElementById(elementId);
+  if (!resultDiv) return;
+  
+  if (isValid) {
+    resultDiv.className = 'mt-2 p-2 rounded bg-green-50 text-green-800 text-xs border border-green-200';
+    resultDiv.innerHTML = `
+      <i class="fas fa-check-circle mr-1"></i>
+      <strong>${message}</strong>
+    `;
+  } else {
+    resultDiv.className = 'mt-2 p-2 rounded bg-gray-50 text-gray-600 text-xs border border-gray-200';
+    resultDiv.innerHTML = `
+      <i class="fas fa-info-circle mr-1"></i>
+      <strong>${message}</strong>
+    `;
+  }
+  resultDiv.classList.remove('hidden');
 }
 
 function togglePineconeSettings() {
@@ -896,6 +927,11 @@ async function saveParsingAPISettings(event) {
     }
     
     showNotification('문서 파싱 API 설정이 저장되었습니다.', 'success');
+    
+    // Show saved status
+    if (settings.llamaparse_api_key) {
+      showAPIKeyStatus('llamaparse_test_result', true, '저장된 API 키 사용 중');
+    }
   } catch (error) {
     console.error('[Admin] Failed to save parsing API settings:', error);
     showError('설정 저장 실패: ' + (error.response?.data?.error || error.message));
@@ -920,6 +956,11 @@ async function saveOpenAISettings(event) {
     }
     
     showNotification('OpenAI 설정이 저장되었습니다.', 'success');
+    
+    // Show saved status
+    if (settings.openai_api_key) {
+      showAPIKeyStatus('openai_test_result', true, '저장된 API 키 사용 중');
+    }
   } catch (error) {
     console.error('[Admin] Failed to save OpenAI settings:', error);
     showError('설정 저장 실패: ' + (error.response?.data?.error || error.message));
