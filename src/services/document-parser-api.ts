@@ -116,11 +116,10 @@ export class DocumentParserAPI {
           const resultResponse = await fetch(
             `https://api.cloud.llamaindex.ai/api/v1/parsing/job/${jobId}/result/markdown`,
             {
-              method: 'POST',
+              method: 'GET',
               headers: {
                 'Authorization': `Bearer ${apiKey}`,
-                'Accept': 'application/json',
-                'Content-Type': 'multipart/form-data'
+                'Accept': 'application/json'
               }
             }
           );
