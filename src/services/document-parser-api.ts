@@ -33,6 +33,16 @@ export class DocumentParserAPI {
       const blob = mimeType ? new Blob([file], { type: mimeType }) : new Blob([file]);
       formData.append('file', blob, filename);
 
+      // Log the actual API key being used
+      console.log('[LlamaParse] API key details:', {
+        length: apiKey.length,
+        prefix: apiKey.substring(0, 7),
+        suffix: apiKey.substring(apiKey.length - 4),
+        hasWhitespace: /\s/.test(apiKey),
+        startsWithBearer: apiKey.startsWith('Bearer '),
+        authHeader: `Bearer ${apiKey}`.substring(0, 20) + '...'
+      });
+      
       const uploadResponse = await fetch('https://api.cloud.llamaindex.ai/api/parsing/upload', {
         method: 'POST',
         headers: {
