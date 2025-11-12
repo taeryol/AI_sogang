@@ -238,20 +238,71 @@ documents.post('/upload', verifyAuth, async (c) => {
 });
 
 /**
- * DELETE /api/documents/:id
- * Delete document
+ * PATCH /api/documents/:id
+ * Update document (rename)
  */
-documents.delete('/:id', verifyAuth, requireAdmin, async (c) => {
+documents.patch('/:id', verifyAuth, async (c) => {
   try {
     const documentId = parseInt(c.req.param('id'));
+    const userId = c.get('userId');
+    const userRole = c.get('userRole');
+    const { title } = await c.req.json();
+
+    if (!title || !title.trim()) {
+      return c.json({ error: 'Title is required' }, 400);
+    }
 
     // Check if document exists
     const document = await c.env.DB.prepare(
-      'SELECT id FROM documents WHERE id = ?'
-    ).bind(documentId).first();
+      'SELECT id, uploaded_by FROM documents WHERE id = ?'
+    ).bind(documentId).first<{ id: number; uploaded_by: number }>();
 
     if (!document) {
       return c.json({ error: 'Document not found' }, 404);
+    }
+
+    // Check permissions: owner or admin
+    if (userRole !== 'admin' && document.uploaded_by !== userId) {
+      return c.json({ error: 'Forbidden' }, 403);
+    }
+
+    // Update document title
+    await c.env.DB.prepare(
+      'UPDATE documents SET title = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+    ).bind(title.trim(), documentId).run();
+
+    return c.json({ 
+      message: 'Document renamed successfully',
+      title: title.trim()
+    });
+  } catch (error) {
+    console.error('Error updating document:', error);
+    return c.json({ error: 'Failed to update document' }, 500);
+  }
+});
+
+/**
+ * DELETE /api/documents/:id
+ * Delete document
+ */
+documents.delete('/:id', verifyAuth, async (c) => {
+  try {
+    const documentId = parseInt(c.req.param('id'));
+    const userId = c.get('userId');
+    const userRole = c.get('userRole');
+
+    // Check if document exists
+    const document = await c.env.DB.prepare(
+      'SELECT id, uploaded_by FROM documents WHERE id = ?'
+    ).bind(documentId).first<{ id: number; uploaded_by: number }>();
+
+    if (!document) {
+      return c.json({ error: 'Document not found' }, 404);
+    }
+
+    // Check permissions: owner or admin
+    if (userRole !== 'admin' && document.uploaded_by !== userId) {
+      return c.json({ error: 'Forbidden' }, 403);
     }
 
     // Delete from vector DB

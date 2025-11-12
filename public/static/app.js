@@ -544,13 +544,13 @@ async function showHistory() {
 }
 
 function showDocuments() {
-  if (!authToken || currentUser.role !== 'admin') {
-    showNotification('관리자 권한이 필요합니다', 'error');
+  if (!authToken) {
+    showNotification('로그인이 필요합니다', 'error');
     return;
   }
   
-  // This would open a document management interface
-  showNotification('문서 관리 기능은 개발 중입니다', 'info');
+  // Redirect to documents management page
+  window.location.href = '/documents';
 }
 
 function showNotification(message, type = 'info') {

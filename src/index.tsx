@@ -34,6 +34,49 @@ app.get('/api/health', (c) => {
   });
 });
 
+// Documents management page
+app.get('/documents', (c) => {
+  return c.html(`
+    <!DOCTYPE html>
+    <html lang="ko">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>문서 관리 - MindBase</title>
+        <script src="https://cdn.tailwindcss.com"></script>
+        <link href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css" rel="stylesheet">
+        <script>
+            tailwind.config = {
+                theme: {
+                    extend: {
+                        colors: {
+                            primary: {
+                                50: '#f0fdfa',
+                                100: '#ccfbf1',
+                                200: '#99f6e4',
+                                300: '#5eead4',
+                                400: '#2dd4bf',
+                                500: '#14b8a6',
+                                600: '#0d9488',
+                                700: '#0f766e',
+                                800: '#115e59',
+                                900: '#134e4a',
+                            }
+                        }
+                    }
+                }
+            }
+        </script>
+    </head>
+    <body class="bg-gray-50">
+        <div id="app"></div>
+        <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+        <script src="/static/documents.js"></script>
+    </body>
+    </html>
+  `);
+});
+
 // Admin page
 app.get('/admin', (c) => {
   return c.html(`
