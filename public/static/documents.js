@@ -5,14 +5,14 @@ let currentUser = null;
 let documents = [];
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     if (!authToken) {
         window.location.href = '/';
         return;
     }
 
-    loadCurrentUser();
     renderApp();
+    await loadCurrentUser();
 });
 
 async function loadCurrentUser() {

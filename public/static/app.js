@@ -85,8 +85,10 @@ function updateUIForLoggedIn() {
   document.getElementById('documentsListSection').classList.remove('hidden');
   loadDocumentsList();
   
+  // Show documents management button for all users
+  document.getElementById('documentsBtn').classList.remove('hidden');
+  
   if (currentUser.role === 'admin') {
-    document.getElementById('documentsBtn').classList.remove('hidden');
     document.getElementById('adminPageBtn').classList.remove('hidden');
   }
   
