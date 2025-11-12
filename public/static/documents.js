@@ -6,9 +6,23 @@ let documents = [];
 
 // Initialize
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('[Documents] Initializing...', { hasToken: !!authToken });
+    
     if (!authToken) {
+        console.log('[Documents] No auth token, redirecting to home');
         window.location.href = '/';
         return;
+    }
+
+    // Try to load user from localStorage first
+    const userStr = localStorage.getItem('currentUser');
+    if (userStr) {
+        try {
+            currentUser = JSON.parse(userStr);
+            console.log('[Documents] Loaded user from localStorage:', currentUser);
+        } catch (e) {
+            console.error('[Documents] Failed to parse user data:', e);
+        }
     }
 
     renderApp();
@@ -17,14 +31,40 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function loadCurrentUser() {
     try {
+        console.log('[Documents] Calling /api/auth/me...');
         const response = await axios.get('/api/auth/me', {
             headers: { 'Authorization': `Bearer ${authToken}` }
         });
         currentUser = response.data.user;
+        console.log('[Documents] User loaded from API:', currentUser);
+        
+        // Update localStorage
+        localStorage.setItem('currentUser', JSON.stringify(currentUser));
+        
         await loadDocuments();
     } catch (error) {
-        console.error('Failed to load user:', error);
+        console.error('[Documents] Failed to load user:', error);
+        console.error('[Documents] Error details:', {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+        });
+        
+        // If we have user from localStorage, try to continue
+        if (currentUser) {
+            console.log('[Documents] Using cached user data, attempting to load documents...');
+            try {
+                await loadDocuments();
+                return; // Success with cached data
+            } catch (docError) {
+                console.error('[Documents] Failed to load documents with cached user:', docError);
+            }
+        }
+        
+        // Clear invalid token and redirect
         localStorage.removeItem('authToken');
+        localStorage.removeItem('currentUser');
+        alert('인증이 만료되었습니다. 다시 로그인해주세요.');
         window.location.href = '/';
     }
 }
