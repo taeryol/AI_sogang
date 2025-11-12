@@ -13,5 +13,12 @@
       "database_name": "webapp-production",
       "database_id": "13864601-2e6a-4af5-969b-bb31dad0ff3d"
     }
+  ],
+  // Vectorize configuration
+  "vectorize": [
+    {
+      "binding": "VECTORIZE",
+      "index_name": "webapp-vectors"
+    }
   ]
 }

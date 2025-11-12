@@ -4,14 +4,11 @@ import { Hono } from 'hono';
 import { Bindings, Variables } from '../types/bindings';
 import { verifyAuth } from '../middleware/auth';
 import { OpenAIService } from '../services/openai';
-import { SimpleVectorDB } from '../services/vectordb';
+import { CloudflareVectorize } from '../services/vectordb';
 import { DocumentProcessor } from '../services/document-processor';
 import { QueryRequest, QueryResponse } from '../types/models';
 
 const query = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-
-// Simple in-memory vector DB (same instance as documents route)
-const vectorDB = new SimpleVectorDB();
 
 /**
  * POST /api/query
@@ -49,8 +46,9 @@ query.post('/', verifyAuth, async (c) => {
     // Step 1: Generate embedding for the question
     const questionEmbedding = await openai.generateEmbedding(question);
 
-    // Step 2: Vector search for similar document chunks
-    const vectorResults = await vectorDB.search(questionEmbedding, 5);
+    // Step 2: Vector search for similar document chunks using Vectorize
+    const vectorize = new CloudflareVectorize(c.env.VECTORIZE);
+    const vectorResults = await vectorize.search(questionEmbedding, 5);
 
     // Step 3: Keyword search for additional context
     const keywordResults = await performKeywordSearch(c.env.DB, question, 5);

@@ -5,12 +5,9 @@ import { Bindings, Variables } from '../types/bindings';
 import { verifyAuth, requireAdmin } from '../middleware/auth';
 import { DocumentProcessor } from '../services/document-processor';
 import { OpenAIService } from '../services/openai';
-import { SimpleVectorDB, VectorDocument } from '../services/vectordb';
+import { CloudflareVectorize, VectorDocument } from '../services/vectordb';
 
 const documents = new Hono<{ Bindings: Bindings; Variables: Variables }>();
-
-// Simple in-memory vector DB (replace with Pinecone in production)
-const vectorDB = new SimpleVectorDB();
 
 /**
  * GET /api/documents/stats
@@ -305,10 +302,19 @@ documents.delete('/:id', verifyAuth, async (c) => {
       return c.json({ error: 'Forbidden' }, 403);
     }
 
-    // Delete from vector DB
-    await vectorDB.deleteByDocumentId(documentId);
+    // Get vector IDs from document_chunks
+    const chunks = await c.env.DB.prepare(
+      'SELECT embedding_id FROM document_chunks WHERE document_id = ?'
+    ).bind(documentId).all();
 
-    // Delete document chunks
+    // Delete from Vectorize
+    if (chunks.results && chunks.results.length > 0) {
+      const vectorize = new CloudflareVectorize(c.env.VECTORIZE);
+      const vectorIds = chunks.results.map((chunk: any) => chunk.embedding_id);
+      await vectorize.deleteByIds(vectorIds);
+    }
+
+    // Delete document chunks from D1
     await c.env.DB.prepare(
       'DELETE FROM document_chunks WHERE document_id = ?'
     ).bind(documentId).run();
@@ -375,7 +381,7 @@ async function processDocument(
 
         const chunkId = chunkResult.meta.last_row_id as number;
 
-        // Store in vector DB
+        // Store in Vectorize
         const vectorDoc: VectorDocument = {
           id: `${documentId}-${chunk.index}`,
           embedding,
@@ -387,7 +393,8 @@ async function processDocument(
           }
         };
 
-        await vectorDB.upsert(vectorDoc);
+        const vectorize = new CloudflareVectorize(env.VECTORIZE);
+        await vectorize.upsert(vectorDoc);
       } catch (error) {
         console.error(`Error processing chunk ${chunk.index}:`, error);
       }
