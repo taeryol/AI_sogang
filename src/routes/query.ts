@@ -4,7 +4,7 @@ import { Hono } from 'hono';
 import { Bindings, Variables } from '../types/bindings';
 import { verifyAuth } from '../middleware/auth';
 import { OpenAIService } from '../services/openai';
-import { CloudflareVectorize } from '../services/vectordb';
+import { PineconeVectorDB } from '../services/vectordb';
 import { DocumentProcessor } from '../services/document-processor';
 import { QueryRequest, QueryResponse } from '../types/models';
 
@@ -46,9 +46,19 @@ query.post('/', verifyAuth, async (c) => {
     // Step 1: Generate embedding for the question
     const questionEmbedding = await openai.generateEmbedding(question);
 
-    // Step 2: Vector search for similar document chunks using Vectorize
-    const vectorize = new CloudflareVectorize(c.env.VECTORIZE);
-    const vectorResults = await vectorize.search(questionEmbedding, 5);
+    // Step 2: Vector search for similar document chunks using Pinecone
+    const pineconeKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('pinecone_api_key').first<{ setting_value: string }>();
+
+    let vectorResults: any[] = [];
+    if (pineconeKeyResult?.setting_value) {
+      const pinecone = new PineconeVectorDB(
+        pineconeKeyResult.setting_value,
+        'mindbase-vectors-5mchy92.svc.aped-4627-b74a.pinecone.io'
+      );
+      vectorResults = await pinecone.search(questionEmbedding, 5);
+    }
 
     // Step 3: Keyword search for additional context
     const keywordResults = await performKeywordSearch(c.env.DB, question, 5);

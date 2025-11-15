@@ -5,7 +5,7 @@ import { Bindings, Variables } from '../types/bindings';
 import { verifyAuth, requireAdmin } from '../middleware/auth';
 import { DocumentProcessor } from '../services/document-processor';
 import { OpenAIService } from '../services/openai';
-import { CloudflareVectorize, VectorDocument } from '../services/vectordb';
+import { PineconeVectorDB, VectorDocument } from '../services/vectordb';
 
 const documents = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -302,16 +302,18 @@ documents.delete('/:id', verifyAuth, async (c) => {
       return c.json({ error: 'Forbidden' }, 403);
     }
 
-    // Get vector IDs from document_chunks
-    const chunks = await c.env.DB.prepare(
-      'SELECT embedding_id FROM document_chunks WHERE document_id = ?'
-    ).bind(documentId).all();
+    // Load Pinecone configuration
+    const pineconeKeyResult = await c.env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('pinecone_api_key').first<{ setting_value: string }>();
 
-    // Delete from Vectorize
-    if (chunks.results && chunks.results.length > 0) {
-      const vectorize = new CloudflareVectorize(c.env.VECTORIZE);
-      const vectorIds = chunks.results.map((chunk: any) => chunk.embedding_id);
-      await vectorize.deleteByIds(vectorIds);
+    // Delete from Pinecone
+    if (pineconeKeyResult?.setting_value) {
+      const pinecone = new PineconeVectorDB(
+        pineconeKeyResult.setting_value,
+        'mindbase-vectors-5mchy92.svc.aped-4627-b74a.pinecone.io'
+      );
+      await pinecone.deleteByDocumentId(documentId);
     }
 
     // Delete document chunks from D1
@@ -381,7 +383,7 @@ async function processDocument(
 
         const chunkId = chunkResult.meta.last_row_id as number;
 
-        // Store in Vectorize
+        // Store in Pinecone
         const vectorDoc: VectorDocument = {
           id: `${documentId}-${chunk.index}`,
           embedding,
@@ -393,8 +395,18 @@ async function processDocument(
           }
         };
 
-        const vectorize = new CloudflareVectorize(env.VECTORIZE);
-        await vectorize.upsert(vectorDoc);
+        // Load Pinecone config
+        const pineconeKeyResult = await env.DB.prepare(
+          'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+        ).bind('pinecone_api_key').first<{ setting_value: string }>();
+
+        if (pineconeKeyResult?.setting_value) {
+          const pinecone = new PineconeVectorDB(
+            pineconeKeyResult.setting_value,
+            'mindbase-vectors-5mchy92.svc.aped-4627-b74a.pinecone.io'
+          );
+          await pinecone.upsert(vectorDoc);
+        }
       } catch (error) {
         console.error(`Error processing chunk ${chunk.index}:`, error);
       }

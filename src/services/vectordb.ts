@@ -236,15 +236,11 @@ export class CloudflareVectorize {
 // Pinecone integration (for production use)
 export class PineconeVectorDB {
   private apiKey: string;
-  private environment: string;
-  private indexName: string;
   private baseUrl: string;
 
-  constructor(apiKey: string, environment: string, indexName: string) {
+  constructor(apiKey: string, indexHost: string) {
     this.apiKey = apiKey;
-    this.environment = environment;
-    this.indexName = indexName;
-    this.baseUrl = `https://${indexName}-${environment}.svc.pinecone.io`;
+    this.baseUrl = `https://${indexHost}`;
   }
 
   async upsert(doc: VectorDocument): Promise<void> {
