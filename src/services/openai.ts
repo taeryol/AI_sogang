@@ -39,25 +39,84 @@ export class OpenAIService {
   }
 
   /**
+   * Reformulate user question for better search
+   */
+  async reformulateQuery(question: string): Promise<string> {
+    try {
+      const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${this.apiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            { 
+              role: 'system', 
+              content: `You are a query reformulation expert. Convert natural language questions into search-optimized queries.
+Extract key concepts, entities, and intent. Return only the reformulated query in Korean.
+
+Examples:
+Input: "프로젝트 일정이 어떻게 돼?"
+Output: "프로젝트 일정 마일스톤 타임라인"
+
+Input: "우리 회사 복지 제도 알려줘"
+Output: "회사 복지 제도 혜택 정책"` 
+            },
+            { role: 'user', content: question }
+          ],
+          temperature: 0.3,
+          max_tokens: 100
+        })
+      });
+
+      if (!response.ok) {
+        console.warn('Query reformulation failed, using original');
+        return question;
+      }
+
+      const data = await response.json();
+      return data.choices[0].message.content;
+    } catch (error) {
+      console.error('Error reformulating query:', error);
+      return question; // Fallback to original
+    }
+  }
+
+  /**
    * Generate answer using GPT-4 based on retrieved context
    */
   async generateAnswer(question: string, contexts: string[]): Promise<string> {
     try {
-      const systemPrompt = `You are an intelligent knowledge management assistant. Your task is to answer questions based ONLY on the provided context from internal documents. 
+      const systemPrompt = `당신은 MindBase의 AI 비서입니다. 사용자의 개인 지식 관리를 돕는 똑똑한 도우미 역할을 합니다.
 
-Rules:
-1. Answer in Korean (한국어로 답변)
-2. Use only information from the provided contexts
-3. If the contexts don't contain relevant information, say "제공된 문서에서 관련 정보를 찾을 수 없습니다"
-4. Be concise and accurate
-5. Include source references when possible`;
+**역할 및 성격:**
+- 친근하고 도움이 되는 전문 비서
+- 사용자의 질문 의도를 정확히 이해하고 응답
+- 자연스러운 대화체로 소통
 
-      const userPrompt = `Context from documents:
-${contexts.map((ctx, idx) => `[Document ${idx + 1}]\n${ctx}`).join('\n\n')}
+**응답 규칙:**
+1. 제공된 문서 컨텍스트를 기반으로 답변
+2. 컨텍스트에 있는 정보를 자연스럽게 재구성하여 설명
+3. 질문과 관련된 추가 인사이트나 연결점 제공
+4. 컨텍스트가 충분하지 않으면 솔직하게 말하되, 도움이 될 만한 방향 제시
+5. 답변은 간결하면서도 충분히 유용하게
+6. 필요시 단계별 설명이나 불릿 포인트 사용
 
-Question: ${question}
+**응답 스타일:**
+- "네, 알려드릴게요" 같은 자연스러운 시작
+- "~입니다" 보다는 "~해요", "~거예요" 같은 친근한 종결어미
+- 이모지 적절히 활용 (📌, 💡, ✅ 등)
+- 핵심은 볼드체로 강조`;
 
-Answer:`;
+      const userPrompt = `**사용자 질문:**
+${question}
+
+**참고 문서:**
+${contexts.map((ctx, idx) => `📄 [문서 ${idx + 1}]\n${ctx}`).join('\n\n---\n\n')}
+
+위 문서들을 참고해서 사용자의 질문에 친절하고 자연스럽게 답변해주세요.`;
 
       const response = await fetch(`${this.baseUrl}/chat/completions`, {
         method: 'POST',
@@ -71,8 +130,8 @@ Answer:`;
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          temperature: 0.3,
-          max_tokens: 1000
+          temperature: 0.7, // 더 자연스러운 응답을 위해 증가
+          max_tokens: 1500
         })
       });
 

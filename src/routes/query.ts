@@ -43,10 +43,15 @@ query.post('/', verifyAuth, async (c) => {
     // Initialize OpenAI service
     const openai = new OpenAIService(apiKey);
 
-    // Step 1: Generate embedding for the question
-    const questionEmbedding = await openai.generateEmbedding(question);
+    // Step 1: Reformulate query for better search
+    console.log(`[Query] Original question: "${question}"`);
+    const reformulatedQuery = await openai.reformulateQuery(question);
+    console.log(`[Query] Reformulated query: "${reformulatedQuery}"`);
 
-    // Step 2: Vector search for similar document chunks using Pinecone
+    // Step 2: Generate embedding for the reformulated question
+    const questionEmbedding = await openai.generateEmbedding(reformulatedQuery);
+
+    // Step 3: Vector search for similar document chunks using Pinecone
     const pineconeKeyResult = await c.env.DB.prepare(
       'SELECT setting_value FROM api_settings WHERE setting_key = ?'
     ).bind('pinecone_api_key').first<{ setting_value: string }>();
@@ -60,10 +65,10 @@ query.post('/', verifyAuth, async (c) => {
       vectorResults = await pinecone.search(questionEmbedding, 5);
     }
 
-    // Step 3: Keyword search for additional context
-    const keywordResults = await performKeywordSearch(c.env.DB, question, 5);
+    // Step 4: Keyword search for additional context (using reformulated query)
+    const keywordResults = await performKeywordSearch(c.env.DB, reformulatedQuery, 5);
 
-    // Step 4: Combine and deduplicate results
+    // Step 5: Combine and deduplicate results
     const allChunks = new Map<number, any>();
     
     vectorResults.forEach(result => {
@@ -111,10 +116,10 @@ query.post('/', verifyAuth, async (c) => {
       });
     }
 
-    // Step 5: Generate answer using GPT-4
+    // Step 6: Generate answer using GPT-4 (use original question for natural response)
     const answer = await openai.generateAnswer(question, contexts);
 
-    // Step 6: Prepare sources
+    // Step 7: Prepare sources
     const sources = Array.from(allChunks.values())
       .slice(0, 5)
       .map(chunk => ({
@@ -125,7 +130,7 @@ query.post('/', verifyAuth, async (c) => {
 
     const responseTimeMs = Date.now() - startTime;
 
-    // Step 7: Log the query
+    // Step 8: Log the query
     await c.env.DB.prepare(
       `INSERT INTO queries (user_id, question, answer, sources, status, response_time_ms)
        VALUES (?, ?, ?, ?, 'success', ?)`
