@@ -1,10 +1,7 @@
 // Cloudflare bindings type definitions
 
-import { VectorizeIndex } from '../services/vectordb';
-
 export type Bindings = {
   DB: D1Database;
-  VECTORIZE: VectorizeIndex;
   // R2 bucket removed - storing files directly in D1 instead
   OPENAI_API_KEY?: string;
   PINECONE_API_KEY?: string;
