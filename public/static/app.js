@@ -319,23 +319,45 @@ function addMessage(type, content, sources = [], responseTime = 0) {
       </div>
     `;
   } else {
+    // Convert citations [1], [2] to clickable links
+    let processedContent = escapeHtml(content);
+    if (sources.length > 0) {
+      // Replace [1], [2], etc. with clickable superscript links
+      processedContent = processedContent.replace(/\[(\d+)\]/g, (match, num) => {
+        const sourceIndex = parseInt(num) - 1;
+        if (sourceIndex >= 0 && sourceIndex < sources.length) {
+          return `<sup><a href="#" class="citation-link text-primary-600 hover:text-primary-800 font-semibold no-underline" data-source-index="${sourceIndex}">[${num}]</a></sup>`;
+        }
+        return match;
+      });
+    }
+    
     html = `
       <div class="bg-gray-100 px-4 py-3 rounded-lg max-w-2xl">
         <div class="flex items-start mb-2">
           <i class="fas fa-robot text-blue-600 mr-2 mt-1"></i>
           <div class="flex-1">
-            <p class="text-sm text-gray-800 whitespace-pre-wrap">${escapeHtml(content)}</p>
+            <p class="text-sm text-gray-800 whitespace-pre-wrap">${processedContent}</p>
           </div>
         </div>
         ${sources.length > 0 ? `
           <div class="mt-3 pt-3 border-t border-gray-300">
             <p class="text-xs font-semibold text-gray-600 mb-2">
-              <i class="fas fa-book mr-1"></i>참고 문서:
+              <i class="fas fa-book mr-1"></i>참고 문서 (${sources.length}개):
             </p>
-            <div class="space-y-1">
-              ${sources.map(source => `
-                <div class="text-xs text-gray-600 bg-white px-2 py-1 rounded">
-                  <i class="fas fa-file-alt mr-1"></i>${escapeHtml(source.title)}
+            <div class="space-y-2">
+              ${sources.map((source, index) => `
+                <div class="text-xs bg-white px-3 py-2 rounded border border-gray-200 hover:border-primary-400 cursor-pointer transition-colors source-item" data-source-index="${index}">
+                  <div class="flex items-start justify-between">
+                    <div class="flex-1">
+                      <span class="font-semibold text-primary-600">[${source.source_number || index + 1}]</span>
+                      <span class="text-gray-800 ml-1">${escapeHtml(source.title)}</span>
+                    </div>
+                    <i class="fas fa-external-link-alt text-gray-400 ml-2 mt-0.5"></i>
+                  </div>
+                  <div class="mt-1 text-gray-500">
+                    <i class="fas fa-map-marker-alt mr-1"></i>청크 ${source.chunk_index || 0}
+                  </div>
                 </div>
               `).join('')}
             </div>
@@ -352,6 +374,26 @@ function addMessage(type, content, sources = [], responseTime = 0) {
   
   messageDiv.innerHTML = html;
   chatMessages.appendChild(messageDiv);
+  
+  // Add click event listeners for citations and source items
+  if (type === 'ai' && sources.length > 0) {
+    // Citation links in the answer
+    messageDiv.querySelectorAll('.citation-link').forEach(link => {
+      link.addEventListener('click', (e) => {
+        e.preventDefault();
+        const sourceIndex = parseInt(e.target.dataset.sourceIndex);
+        showSourceModal(sources[sourceIndex]);
+      });
+    });
+    
+    // Source items in the reference section
+    messageDiv.querySelectorAll('.source-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        const sourceIndex = parseInt(e.currentTarget.dataset.sourceIndex);
+        showSourceModal(sources[sourceIndex]);
+      });
+    });
+  }
   
   // Scroll to bottom
   chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -753,3 +795,83 @@ async function handleDocumentUpload() {
     uploadBtn.disabled = false;
   }
 }
+
+// Source Modal Functions
+function showSourceModal(source) {
+  // Create modal if it doesn't exist
+  let modal = document.getElementById('sourceModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'sourceModal';
+    modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden';
+    modal.innerHTML = `
+      <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-hidden shadow-2xl">
+        <div class="flex items-center justify-between p-4 border-b border-gray-200 bg-primary-50">
+          <h3 class="text-lg font-semibold text-gray-800 flex items-center">
+            <i class="fas fa-file-alt text-primary-600 mr-2"></i>
+            <span id="modalTitle"></span>
+          </h3>
+          <button id="closeSourceModal" class="text-gray-500 hover:text-gray-700 transition-colors">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div class="p-6 overflow-y-auto max-h-[calc(90vh-120px)]">
+          <div class="mb-4 flex items-center space-x-4 text-sm">
+            <div class="flex items-center text-gray-600">
+              <i class="fas fa-hashtag text-primary-600 mr-1"></i>
+              <span>문서 ID: <span id="modalDocId" class="font-mono"></span></span>
+            </div>
+            <div class="flex items-center text-gray-600">
+              <i class="fas fa-map-marker-alt text-primary-600 mr-1"></i>
+              <span>청크: <span id="modalChunkIndex" class="font-semibold"></span></span>
+            </div>
+          </div>
+          <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+            <p class="text-xs font-semibold text-gray-500 uppercase mb-2">원문 내용</p>
+            <p id="modalContent" class="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed"></p>
+          </div>
+          <div class="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+            <p class="text-xs text-blue-800">
+              <i class="fas fa-info-circle mr-1"></i>
+              <strong>청크 정보:</strong> 문서는 약 1000자 단위로 분할되며, 청크 번호는 해당 내용이 원본 문서의 어느 위치에 있는지를 나타냅니다.
+            </p>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Close modal events
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        hideSourceModal();
+      }
+    });
+    document.getElementById('closeSourceModal').addEventListener('click', hideSourceModal);
+  }
+  
+  // Populate modal with source data
+  document.getElementById('modalTitle').textContent = source.title || '제목 없음';
+  document.getElementById('modalDocId').textContent = source.document_id || 'N/A';
+  document.getElementById('modalChunkIndex').textContent = source.chunk_index || 0;
+  document.getElementById('modalContent').textContent = source.chunk_content || '내용을 불러올 수 없습니다.';
+  
+  // Show modal
+  modal.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+
+function hideSourceModal() {
+  const modal = document.getElementById('sourceModal');
+  if (modal) {
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+}
+
+// Close modal with Escape key
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    hideSourceModal();
+  }
+});
