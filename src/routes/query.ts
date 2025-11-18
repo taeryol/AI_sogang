@@ -82,17 +82,17 @@ query.post('/', verifyAuth, async (c) => {
         allChunks.set(result.id, {
           chunk_id: result.id,
           document_id: result.document_id,
+          chunk_index: result.chunk_index || 0,
           content: result.content,
-          title: 'Unknown' // We'll fetch this separately if needed
+          title: result.title || 'Unknown'
         });
       }
     });
 
-    const contexts = Array.from(allChunks.values())
-      .slice(0, 5)
-      .map(chunk => chunk.content);
-
-    if (contexts.length === 0) {
+    // Step 6: Prepare contexts with source information
+    const chunksArray = Array.from(allChunks.values()).slice(0, 5);
+    
+    if (chunksArray.length === 0) {
       // No relevant information found
       const noResultAnswer = `죄송합니다. 질문하신 내용과 관련된 문서를 찾을 수 없습니다. 😊
 
@@ -116,21 +116,29 @@ query.post('/', verifyAuth, async (c) => {
       });
     }
 
-    // Step 6: Generate answer using GPT-4 (use original question for natural response)
-    const answer = await openai.generateAnswer(question, contexts);
+    // Prepare contexts with source metadata
+    const contextsWithMetadata = chunksArray.map((chunk, index) => ({
+      content: chunk.content,
+      source_number: index + 1,
+      title: chunk.title || 'Unknown',
+      chunk_index: chunk.chunk_index || 0
+    }));
 
-    // Step 7: Prepare sources
-    const sources = Array.from(allChunks.values())
-      .slice(0, 5)
-      .map(chunk => ({
-        document_id: chunk.document_id,
-        title: chunk.title,
-        chunk_content: chunk.content.substring(0, 200) + '...'
-      }));
+    // Step 7: Generate answer using GPT-4 with source citations
+    const answer = await openai.generateAnswer(question, contextsWithMetadata);
+
+    // Step 8: Prepare sources for response
+    const sources = chunksArray.map((chunk, index) => ({
+      source_number: index + 1,
+      document_id: chunk.document_id,
+      title: chunk.title || 'Unknown',
+      chunk_index: chunk.chunk_index || 0,
+      chunk_content: chunk.content.substring(0, 200) + '...'
+    }));
 
     const responseTimeMs = Date.now() - startTime;
 
-    // Step 8: Log the query
+    // Step 9: Log the query
     await c.env.DB.prepare(
       `INSERT INTO queries (user_id, question, answer, sources, status, response_time_ms)
        VALUES (?, ?, ?, ?, 'success', ?)`
@@ -304,7 +312,7 @@ async function performKeywordSearch(db: D1Database, question: string, limit: num
     const params = keywords.map(keyword => `%${keyword}%`);
 
     const result = await db.prepare(
-      `SELECT dc.id, dc.document_id, dc.content, d.title
+      `SELECT dc.id, dc.document_id, dc.content, dc.chunk_index, d.title
        FROM document_chunks dc
        JOIN documents d ON dc.document_id = d.id
        WHERE d.status = 'indexed' AND (${conditions})

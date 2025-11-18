@@ -390,6 +390,7 @@ async function processDocument(
           metadata: {
             document_id: documentId,
             chunk_id: chunkId,
+            chunk_index: chunk.index,
             content: chunk.content,
             title
           }

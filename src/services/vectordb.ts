@@ -7,6 +7,7 @@ export interface VectorDocument {
   metadata: {
     document_id: number;
     chunk_id: number;
+    chunk_index: number;
     content: string;
     title: string;
   };
