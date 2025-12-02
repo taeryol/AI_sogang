@@ -669,38 +669,50 @@ async function handleDocumentUpload() {
     const results = [];
     const errors = [];
     
-    // Upload files one by one
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    // Upload files in parallel (병렬 업로드)
+    const uploadPromises = files.map((file, index) => {
       const title = customTitle || file.name;
       
-      try {
-        uploadStatus.textContent = `업로드 중... (${i + 1}/${files.length}): ${file.name}`;
-        const progress = Math.round(((i) / files.length) * 100);
-        uploadProgressBar.style.width = progress + '%';
-        
-        // Prepare form data
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('title', title);
-        
-        // Upload file
-        const response = await axios.post('/api/documents/upload', formData, {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'multipart/form-data'
-          }
-        });
-        
-        results.push({ filename: file.name, success: true });
-      } catch (error) {
-        console.error(`Upload error for ${file.name}:`, error);
-        errors.push({ 
-          filename: file.name, 
-          error: error.response?.data?.error || error.message 
-        });
-      }
-    }
+      return (async () => {
+        try {
+          uploadStatus.textContent = `업로드 중... (${index + 1}/${files.length}): ${file.name}`;
+          
+          // Prepare form data
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('title', title);
+          
+          // Upload file
+          const response = await axios.post('/api/documents/upload', formData, {
+            headers: {
+              'Authorization': `Bearer ${authToken}`,
+              'Content-Type': 'multipart/form-data'
+            }
+          });
+          
+          // Update progress
+          const completed = results.length + errors.length + 1;
+          const progress = Math.round((completed / files.length) * 100);
+          uploadProgressBar.style.width = progress + '%';
+          
+          results.push({ filename: file.name, success: true });
+        } catch (error) {
+          console.error(`Upload error for ${file.name}:`, error);
+          
+          const completed = results.length + errors.length + 1;
+          const progress = Math.round((completed / files.length) * 100);
+          uploadProgressBar.style.width = progress + '%';
+          
+          errors.push({ 
+            filename: file.name, 
+            error: error.response?.data?.error || error.message 
+          });
+        }
+      })();
+    });
+    
+    // Wait for all uploads to complete
+    await Promise.all(uploadPromises);
     
     uploadProgressBar.style.width = '100%';
     uploadStatus.textContent = '완료!';

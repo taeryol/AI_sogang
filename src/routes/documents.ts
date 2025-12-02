@@ -364,8 +364,13 @@ async function processDocument(
     // Initialize OpenAI service
     const openai = new OpenAIService(apiKey);
 
-    // Generate embeddings and store chunks
-    for (const chunk of chunks) {
+    // Load Pinecone config once
+    const pineconeKeyResult = await env.DB.prepare(
+      'SELECT setting_value FROM api_settings WHERE setting_key = ?'
+    ).bind('pinecone_api_key').first<{ setting_value: string }>();
+
+    // Process all chunks in parallel (병렬 청크 처리)
+    const chunkProcessingPromises = chunks.map(async (chunk) => {
       try {
         // Generate embedding
         const embedding = await openai.generateEmbedding(chunk.content);
@@ -396,11 +401,6 @@ async function processDocument(
           }
         };
 
-        // Load Pinecone config
-        const pineconeKeyResult = await env.DB.prepare(
-          'SELECT setting_value FROM api_settings WHERE setting_key = ?'
-        ).bind('pinecone_api_key').first<{ setting_value: string }>();
-
         if (pineconeKeyResult?.setting_value) {
           const pinecone = new PineconeVectorDB(
             pineconeKeyResult.setting_value,
@@ -410,7 +410,19 @@ async function processDocument(
         }
       } catch (error) {
         console.error(`Error processing chunk ${chunk.index}:`, error);
+        throw error; // Re-throw to count failures
       }
+    });
+
+    // Wait for all chunks to be processed
+    const results = await Promise.allSettled(chunkProcessingPromises);
+    
+    // Count successes and failures
+    const successful = results.filter(r => r.status === 'fulfilled').length;
+    const failed = results.filter(r => r.status === 'rejected').length;
+    
+    if (failed > 0) {
+      console.warn(`Document ${documentId}: ${successful}/${chunks.length} chunks processed successfully, ${failed} failed`);
     }
 
     // Update document status
