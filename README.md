@@ -40,7 +40,7 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 ## URLs
 
 ### 프로덕션 환경
-- **애플리케이션**: https://b0d4ad5f.webapp-31i.pages.dev (최신 - 임베딩 캐싱 & 문맥 이해 개선)
+- **애플리케이션**: https://12a25036.webapp-31i.pages.dev (최신 - v1.5.0 임베딩 캐싱 & 문맥 이해 개선)
 - **프로젝트 도메인**: https://webapp-31i.pages.dev
 - **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널, 문서 업로드 [PDF/DOCX/PPTX/TXT/MD], 자연어 Q&A, 클릭 가능한 각주 출처 모두 작동)
 
