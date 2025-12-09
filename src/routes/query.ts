@@ -7,6 +7,13 @@ import { OpenAIService } from '../services/openai';
 import { PineconeVectorDB } from '../services/vectordb';
 import { DocumentProcessor } from '../services/document-processor';
 import { QueryRequest, QueryResponse } from '../types/models';
+import { 
+  getCachedEmbedding, 
+  cacheEmbedding, 
+  recordCacheHit, 
+  recordCacheMiss 
+} from '../services/cache';
+import { getContextualChunks, groupAndMergeChunks } from '../services/chunk-context';
 
 const query = new Hono<{ Bindings: Bindings; Variables: Variables }>();
 
@@ -48,8 +55,19 @@ query.post('/', verifyAuth, async (c) => {
     const reformulatedQuery = await openai.reformulateQuery(question);
     console.log(`[Query] Reformulated query: "${reformulatedQuery}"`);
 
-    // Step 2: Generate embedding for the reformulated question
-    const questionEmbedding = await openai.generateEmbedding(reformulatedQuery);
+    // Step 2: Generate embedding for the reformulated question (with caching)
+    let questionEmbedding = await getCachedEmbedding(c.env.CACHE, reformulatedQuery);
+    
+    if (questionEmbedding) {
+      recordCacheHit();
+      console.log('[Query] Using cached embedding');
+    } else {
+      recordCacheMiss();
+      console.log('[Query] Generating new embedding');
+      questionEmbedding = await openai.generateEmbedding(reformulatedQuery);
+      // Cache for future use
+      await cacheEmbedding(c.env.CACHE, reformulatedQuery, questionEmbedding);
+    }
 
     // Step 3: Vector search for similar document chunks using Pinecone
     const pineconeKeyResult = await c.env.DB.prepare(
@@ -73,7 +91,10 @@ query.post('/', verifyAuth, async (c) => {
     
     vectorResults.forEach(result => {
       if (!allChunks.has(result.metadata.chunk_id)) {
-        allChunks.set(result.metadata.chunk_id, result.metadata);
+        allChunks.set(result.metadata.chunk_id, {
+          ...result.metadata,
+          is_primary: true  // Mark as primary selected chunk
+        });
       }
     });
 
@@ -84,13 +105,36 @@ query.post('/', verifyAuth, async (c) => {
           document_id: result.document_id,
           chunk_index: result.chunk_index || 0,
           content: result.content,
-          title: result.title || 'Unknown'
+          title: result.title || 'Unknown',
+          is_primary: true  // Mark as primary selected chunk
         });
       }
     });
 
+    // Step 5.5: Get contextual chunks (N-1, N, N+1) for better context
+    const primaryChunks = Array.from(allChunks.values()).slice(0, 5);
+    const contextualChunksMap = await getContextualChunks(
+      c.env.DB,
+      primaryChunks.map(c => ({
+        document_id: c.document_id,
+        chunk_index: c.chunk_index,
+        chunk_id: c.chunk_id
+      }))
+    );
+    
+    // Add title to contextual chunks
+    for (const [chunkId, chunk] of contextualChunksMap.entries()) {
+      const primaryChunk = primaryChunks.find(c => c.document_id === chunk.document_id);
+      if (primaryChunk) {
+        chunk.title = primaryChunk.title;
+      }
+    }
+    
+    // Merge adjacent chunks for coherent context
+    const mergedChunks = groupAndMergeChunks(Array.from(contextualChunksMap.values()));
+
     // Step 6: Prepare contexts with source information
-    const chunksArray = Array.from(allChunks.values()).slice(0, 5);
+    const chunksArray = mergedChunks.slice(0, 5);
     
     if (chunksArray.length === 0) {
       // No relevant information found
@@ -116,25 +160,31 @@ query.post('/', verifyAuth, async (c) => {
       });
     }
 
-    // Prepare contexts with source metadata
+    // Prepare contexts with source metadata (using merged content)
     const contextsWithMetadata = chunksArray.map((chunk, index) => ({
-      content: chunk.content,
+      content: chunk.merged_content || chunk.content,
       source_number: index + 1,
       title: chunk.title || 'Unknown',
-      chunk_index: chunk.chunk_index || 0
+      chunk_index: chunk.chunk_indices ? chunk.chunk_indices[0] : (chunk.chunk_index || 0),
+      chunk_range: chunk.chunk_indices ? `${chunk.chunk_indices[0]}-${chunk.chunk_indices[chunk.chunk_indices.length - 1]}` : undefined
     }));
 
     // Step 7: Generate answer using GPT-4 with source citations
     const answer = await openai.generateAnswer(question, contextsWithMetadata);
 
     // Step 8: Prepare sources for response
-    const sources = chunksArray.map((chunk, index) => ({
-      source_number: index + 1,
-      document_id: chunk.document_id,
-      title: chunk.title || 'Unknown',
-      chunk_index: chunk.chunk_index || 0,
-      chunk_content: chunk.content.substring(0, 200) + '...'
-    }));
+    const sources = chunksArray.map((chunk, index) => {
+      const content = chunk.merged_content || chunk.content;
+      return {
+        source_number: index + 1,
+        document_id: chunk.document_id,
+        title: chunk.title || 'Unknown',
+        chunk_index: chunk.chunk_indices ? chunk.chunk_indices[0] : (chunk.chunk_index || 0),
+        chunk_range: chunk.chunk_indices ? `${chunk.chunk_indices[0]}-${chunk.chunk_indices[chunk.chunk_indices.length - 1]}` : undefined,
+        chunk_content: content.substring(0, 300) + '...',
+        context_enhanced: chunk.chunk_indices && chunk.chunk_indices.length > 1
+      };
+    });
 
     const responseTimeMs = Date.now() - startTime;
 

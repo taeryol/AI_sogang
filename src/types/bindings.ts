@@ -2,6 +2,7 @@
 
 export type Bindings = {
   DB: D1Database;
+  CACHE: KVNamespace; // KV for caching embeddings and search results
   // R2 bucket removed - storing files directly in D1 instead
   OPENAI_API_KEY?: string;
   PINECONE_API_KEY?: string;

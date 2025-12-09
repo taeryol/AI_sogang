@@ -13,5 +13,13 @@
       "database_name": "webapp-production",
       "database_id": "13864601-2e6a-4af5-969b-bb31dad0ff3d"
     }
+  ],
+  // KV Namespace for caching (preview for local dev)
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "preview_cache_id",
+      "preview_id": "preview_cache_id"
+    }
   ]
 }
