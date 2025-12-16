@@ -27,10 +27,51 @@ query.post('/', verifyAuth, async (c) => {
   try {
     const userId = c.get('userId');
     const body: QueryRequest = await c.req.json();
-    const { question } = body;
+    const { question, session_id, parent_query_id } = body;
 
     if (!question || question.trim().length === 0) {
       return c.json({ error: 'Question is required' }, 400);
+    }
+
+    // Generate or use provided session_id
+    const currentSessionId = session_id || `session_${Date.now()}_${userId}`;
+
+    // Get conversation history if this is a follow-up question
+    let conversationContext = '';
+    if (parent_query_id) {
+      const history = await c.env.DB.prepare(
+        `SELECT question, answer FROM queries 
+         WHERE id = ? AND user_id = ? AND status = 'success'`
+      ).bind(parent_query_id, userId).first<{ question: string; answer: string }>();
+      
+      if (history) {
+        conversationContext = `이전 대화:
+Q: ${history.question}
+A: ${history.answer}
+
+현재 질문: ${question}
+
+위 대화를 참고하여 현재 질문에 답변해주세요.`;
+      }
+    } else if (session_id) {
+      // Get recent conversation in this session
+      const recentHistory = await c.env.DB.prepare(
+        `SELECT question, answer FROM queries 
+         WHERE session_id = ? AND user_id = ? AND status = 'success'
+         ORDER BY created_at DESC LIMIT 3`
+      ).bind(session_id, userId).all();
+      
+      if (recentHistory.results && recentHistory.results.length > 0) {
+        const historyText = recentHistory.results.reverse().map((h: any) => 
+          `Q: ${h.question}\nA: ${h.answer}`
+        ).join('\n\n');
+        conversationContext = `대화 히스토리:
+${historyText}
+
+현재 질문: ${question}
+
+위 대화를 참고하여 답변해주세요.`;
+      }
     }
 
     // Load API settings from database
@@ -50,9 +91,11 @@ query.post('/', verifyAuth, async (c) => {
     // Initialize OpenAI service
     const openai = new OpenAIService(apiKey);
 
-    // Step 1: Reformulate query for better search
+    // Step 1: Reformulate query for better search (with conversation context)
     console.log(`[Query] Original question: "${question}"`);
-    const reformulatedQuery = await openai.reformulateQuery(question);
+    console.log(`[Query] Has conversation context: ${!!conversationContext}`);
+    const questionToReformulate = conversationContext || question;
+    const reformulatedQuery = await openai.reformulateQuery(questionToReformulate);
     console.log(`[Query] Reformulated query: "${reformulatedQuery}"`);
 
     // Step 2: Generate embedding for the reformulated question (with caching)
@@ -169,8 +212,9 @@ query.post('/', verifyAuth, async (c) => {
       chunk_range: chunk.chunk_indices ? `${chunk.chunk_indices[0]}-${chunk.chunk_indices[chunk.chunk_indices.length - 1]}` : undefined
     }));
 
-    // Step 7: Generate answer using GPT-4 with source citations
-    const answer = await openai.generateAnswer(question, contextsWithMetadata);
+    // Step 7: Generate answer using GPT-4 with source citations and conversation context
+    const finalQuestion = conversationContext ? conversationContext : question;
+    const answer = await openai.generateAnswer(finalQuestion, contextsWithMetadata);
 
     // Step 8: Prepare sources for response
     const sources = chunksArray.map((chunk, index) => {
@@ -188,22 +232,28 @@ query.post('/', verifyAuth, async (c) => {
 
     const responseTimeMs = Date.now() - startTime;
 
-    // Step 9: Log the query
-    await c.env.DB.prepare(
-      `INSERT INTO queries (user_id, question, answer, sources, status, response_time_ms)
-       VALUES (?, ?, ?, ?, 'success', ?)`
+    // Step 9: Log the query with session tracking
+    const queryResult = await c.env.DB.prepare(
+      `INSERT INTO queries (user_id, question, answer, sources, status, response_time_ms, session_id, parent_query_id)
+       VALUES (?, ?, ?, ?, 'success', ?, ?, ?)`
     ).bind(
       userId,
       question,
       answer,
       JSON.stringify(sources),
-      responseTimeMs
+      responseTimeMs,
+      currentSessionId,
+      parent_query_id || null
     ).run();
+
+    const queryId = queryResult.meta.last_row_id;
 
     const response: QueryResponse = {
       answer,
       sources,
-      response_time_ms: responseTimeMs
+      response_time_ms: responseTimeMs,
+      query_id: queryId as number,
+      session_id: currentSessionId
     };
 
     return c.json(response);

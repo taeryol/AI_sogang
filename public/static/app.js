@@ -2,6 +2,7 @@
 
 let authToken = null;
 let currentUser = null;
+let currentSessionId = null; // Track current conversation session
 
 // Initialize app
 document.addEventListener('DOMContentLoaded', () => {
@@ -44,6 +45,7 @@ function setupEventListeners() {
   
   // Chat
   document.getElementById('sendBtn').addEventListener('click', sendQuestion);
+  document.getElementById('newChatBtn').addEventListener('click', startNewConversation);
   document.getElementById('questionInput').addEventListener('keypress', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -57,6 +59,9 @@ function setupEventListeners() {
   
   // Document Upload
   document.getElementById('uploadBtn').addEventListener('click', handleDocumentUpload);
+  
+  // Setup Drag & Drop
+  setupDragAndDrop();
 }
 
 function checkAuthState() {
@@ -76,6 +81,7 @@ function updateUIForLoggedIn() {
   document.getElementById('userName').textContent = currentUser.name;
   document.getElementById('questionInput').disabled = false;
   document.getElementById('sendBtn').disabled = false;
+  document.getElementById('newChatBtn').classList.remove('hidden'); // Show new chat button
   
   // Show upload form
   document.getElementById('uploadLoginPrompt').classList.add('hidden');
@@ -104,6 +110,7 @@ function updateUIForLoggedOut() {
   document.getElementById('userInfo').classList.add('hidden');
   document.getElementById('documentsBtn').classList.add('hidden');
   document.getElementById('adminPageBtn').classList.add('hidden');
+  document.getElementById('newChatBtn').classList.add('hidden'); // Hide new chat button
   document.getElementById('questionInput').disabled = true;
   document.getElementById('sendBtn').disabled = true;
   
@@ -258,13 +265,21 @@ async function sendQuestion() {
   try {
     const response = await axios.post(
       '/api/query',
-      { question },
+      { 
+        question,
+        session_id: currentSessionId // Include session_id if exists
+      },
       {
         headers: {
           'Authorization': `Bearer ${authToken}`
         }
       }
     );
+    
+    // Update current session ID from response
+    if (response.data.session_id) {
+      currentSessionId = response.data.session_id;
+    }
     
     // Remove loading message
     removeLoadingMessage(loadingId);
@@ -302,6 +317,20 @@ async function sendQuestion() {
     document.getElementById('sendBtn').disabled = false;
     input.focus();
   }
+}
+
+// Start a new conversation session
+function startNewConversation() {
+  currentSessionId = null;
+  
+  // Clear chat messages
+  const chatMessages = document.getElementById('chatMessages');
+  chatMessages.innerHTML = '';
+  
+  // Focus on input
+  document.getElementById('questionInput').focus();
+  
+  showNotification('새 대화를 시작합니다', 'success');
 }
 
 function addMessage(type, content, sources = [], responseTime = 0) {
@@ -624,6 +653,91 @@ function escapeHtml(text) {
 }
 
 // Document Upload Functions
+
+// Setup Drag & Drop functionality
+function setupDragAndDrop() {
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('documentFile');
+  const selectedFilesPreview = document.getElementById('selectedFilesPreview');
+  const selectedFilesList = document.getElementById('selectedFilesList');
+  
+  if (!dropZone || !fileInput) return;
+  
+  // Click to select files
+  dropZone.addEventListener('click', () => {
+    fileInput.click();
+  });
+  
+  // File input change event
+  fileInput.addEventListener('change', () => {
+    updateFilePreview(fileInput.files);
+  });
+  
+  // Prevent default drag behaviors
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+    document.body.addEventListener(eventName, preventDefaults, false);
+  });
+  
+  // Highlight drop zone when dragging over it
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+      dropZone.classList.add('border-primary-500', 'bg-primary-50');
+    }, false);
+  });
+  
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+      dropZone.classList.remove('border-primary-500', 'bg-primary-50');
+    }, false);
+  });
+  
+  // Handle dropped files
+  dropZone.addEventListener('drop', (e) => {
+    const dt = e.dataTransfer;
+    const files = dt.files;
+    
+    fileInput.files = files; // Update file input
+    updateFilePreview(files);
+  }, false);
+  
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+  
+  function updateFilePreview(files) {
+    if (files.length === 0) {
+      selectedFilesPreview.classList.add('hidden');
+      return;
+    }
+    
+    selectedFilesList.innerHTML = '';
+    Array.from(files).forEach(file => {
+      const fileItem = document.createElement('div');
+      fileItem.className = 'flex items-center justify-between';
+      fileItem.innerHTML = `
+        <span class="flex items-center">
+          <i class="fas fa-file text-primary-600 mr-2"></i>
+          ${escapeHtml(file.name)}
+        </span>
+        <span class="text-gray-500">${formatFileSize(file.size)}</span>
+      `;
+      selectedFilesList.appendChild(fileItem);
+    });
+    
+    selectedFilesPreview.classList.remove('hidden');
+  }
+  
+  function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
+  }
+}
+
 async function handleDocumentUpload() {
   const fileInput = document.getElementById('documentFile');
   const titleInput = document.getElementById('documentTitle');
