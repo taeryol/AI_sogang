@@ -40,9 +40,10 @@ AI 에이전트 기반 차세대 지식 관리 시스템 - RAG(Retrieval-Augment
 ## URLs
 
 ### 프로덕션 환경
-- **애플리케이션**: https://12a25036.webapp-31i.pages.dev (최신 - v1.5.0 임베딩 캐싱 & 문맥 이해 개선)
+- **애플리케이션**: https://88c75e73.webapp-31i.pages.dev (최신 - v1.6.0 대화 세션 & Drag-Drop 업로드)
+- **이전 버전**: https://12a25036.webapp-31i.pages.dev (v1.5.0 임베딩 캐싱)
 - **프로젝트 도메인**: https://webapp-31i.pages.dev
-- **상태**: ✅ 정상 작동 중 (로그인, 관리자 패널, 문서 업로드 [PDF/DOCX/PPTX/TXT/MD], 자연어 Q&A, 클릭 가능한 각주 출처 모두 작동)
+- **상태**: ✅ 정상 작동 중 (대화 세션, 드래그 앤 드롭 업로드, 임베딩 캐싱, 문맥 강화 모두 작동)
 
 ### 개발 환경 (v1.6.0 - 대화 세션 & Drag-Drop)
 - **애플리케이션**: https://3000-i94tzifo3xt1qmlk5p5bs-cc2fbc16.sandbox.novita.ai
